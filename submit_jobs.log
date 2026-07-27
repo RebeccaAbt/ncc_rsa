@@ -1,0 +1,41 @@
+Script: run_SL_crossnobis_compile.py
+cmd1: ['python', 'run_SL_crossnobis_compile.py']
+cmd2: ['python', 'run_SL_crossnobis_compile.py', '--dependency', 'afterany:765052']
+
+STDERR:
+Traceback (most recent call last):
+  File "/home/reabt/experiments/ncc/MRI/code/run_SL_crossnobis_compile.py", line 9, in <module>
+    from plus_slurm import JobCluster, PermuteArgument
+ModuleNotFoundError: No module named 'plus_slurm'
+
+Exception occurred:
+Traceback (most recent call last):
+  File "/home/reabt/experiments/ncc/MRI/code/submit_jobs.py", line 34, in <module>
+    jid2 = submit("run_SL_crossnobis_compile.py", dependency=jid1)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/reabt/experiments/ncc/MRI/code/submit_jobs.py", line 28, in submit
+    raise RuntimeError(f"Could not find job ID in output of {script}")
+RuntimeError: Could not find job ID in output of run_SL_crossnobis_compile.py
+Script: run_SL_crossnobis_compile.py
+cmd1: ['python', 'run_SL_crossnobis_compile.py']
+cmd2: ['python', 'run_SL_crossnobis_compile.py', '--dependency', 'afterany:765052']
+
+all MRI subjects: ['20010917rswg', '19960630cahi', '19970302urmr', '19970218crpo', '19840930bigs', '20040627vrrj', '19880331igse', '20020123sbhp', '20020705ttbr', '19961123crsh', '19951227eipo', '19921205crfi', '19991211mrbn', '19910823ssld', '19910703eigl']
+Submit output:
+Submitted batch job 765061
+
+
+Submitted 30/30 jobs.
+
+Second job submitted with ID: 765061
+Script: run_fusion_parallel.py
+cmd1: ['python', 'run_fusion_parallel.py']
+cmd2: ['python', 'run_fusion_parallel.py', '--dependency', 'afterany:765061']
+
+fusion subjects: ['19960630cahi', '19970302urmr', '20040627vrrj', '20020705ttbr', '19951227eipo', '19910823ssld', '19910703eigl']
+Submit output:
+Submitted batch job 765062
+
+
+Submitted 28/28 jobs.
+

@@ -1,0 +1,5 @@
+
+
+
+rclone copy sinuhe:/mnt/sinuhe/data_raw/aw_ncc/subject_subject /home/reabt/data/ncc_aw/MEG_raw/ --include "25*/*.fif" -v --dry-run
+

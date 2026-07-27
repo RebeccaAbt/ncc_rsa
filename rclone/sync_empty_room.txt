@@ -1,0 +1,2 @@
+
+rclone copy sinuhe:/mnt/sinuhe/data_raw/empty_room/subject_subject/ /mnt/scc-projects/sbdl/empty_room --filter "- /230413/**" --filter "+ {23*,24*,25*}/*.fif" --filter "- *" -v

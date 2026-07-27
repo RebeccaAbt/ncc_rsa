@@ -1,0 +1,31 @@
+# pixi environments
+.pixi
+*.egg-info
+
+# vs code remote
+.vscode/
+
+# exclude jobs folder
+jobs/
+
+# exclude pickle files because they are quite big
+*.pkl
+*.pk
+
+# ignore pychace files
+*pyc
+
+# ignore job_outputs folder
+job_outputs/
+
+# ignore test scripts
+
+*test*
+tmp*
+
+# ignore plots
+
+*.png
+*.gif
+*.mp4
+*.svg  

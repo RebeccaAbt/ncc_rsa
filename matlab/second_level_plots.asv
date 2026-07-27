@@ -1,0 +1,135 @@
+clear
+clc
+
+addpath('/home/reabt/Matlab_toolboxes/spm12/')
+spm('Defaults','fMRI');
+spm_jobman('initcfg');
+
+%% Paths
+second_level_base = '/home/reabt/experiments/ncc/MRI/data/second_level_M4b';
+prefix = 'ver_B';
+second_level_base = strcat(second_level_base, '_', prefix);
+
+
+png_outDir = '/home/reabt/experiments/ncc/MRI/code/matlab_plots';
+
+contrast_numbers = [1 2 3 4 6 7 8];
+contrast_names = {'aud_hit_vs_miss', ...
+    'tac_hit_vs_miss', ...
+    'vis_hit_vs_miss', ...
+    'NT_hit_vs_miss', ...
+    'aud_hit+NT_vs_bl', ...
+    'tac_hit+NT_vs_bl', ...
+    'vis_hit+NT_vs_bl'};
+
+%% Threshold settings
+
+
+extent_k = 10;% cluster extent threshold (number of voxels)
+
+% which second-level contrast to display:
+% 1 = positive
+% 2 = negative
+second_level_contrast_idx = 1;
+
+% save figures?
+save_figures = false;
+
+thresh_desc_list = {'none', 'none', 'FWE', 'FWE'};
+thresh_p_list    = [0.001, 0.01, 0.05, 0.1];
+
+
+% Loop over second-level result folders
+for c = 1%:4%numel(contrast_numbers)
+    for t = 3%1:numel(thresh_desc_list)
+
+        thresh_desc = thresh_desc_list{t};
+        thresh_p    = thresh_p_list(t);
+
+
+        con_nr   = contrast_numbers(c);
+        con_name = contrast_names{c};
+
+        outdir = fullfile(second_level_base, sprintf('con_%04d_%s', con_nr, con_name));
+        spm_mat = fullfile(outdir, 'SPM.mat');
+
+        if ~exist(spm_mat, 'file')
+            warning('SPM.mat not found: %s. Skipping.', spm_mat);
+            continue
+        end
+
+        fprintf('\n============================================================\n');
+        fprintf('Showing results for contrast %d: %s\n', con_nr, con_name);
+        fprintf('============================================================\n');
+
+        load(spm_mat)
+
+        % Check whether requested contrast exists
+        if ~isfield(SPM, 'xCon') || numel(SPM.xCon) < second_level_contrast_idx
+            warning('Requested contrast index %d not found in %s', second_level_contrast_idx, spm_mat);
+            continue
+        end
+
+        % Open SPM results UI in script mode
+        spm('defaults', 'FMRI');
+        spm_jobman('initcfg');
+        spm_figure('GetWin', 'Graphics');
+        spm_figure('Clear', 'Graphics');
+
+        xSPM = struct();
+        xSPM.swd      = outdir;
+        xSPM.Ic       = second_level_contrast_idx;
+        xSPM.Im       = [];
+        xSPM.pm       = [];
+        xSPM.Ex       = [];
+        xSPM.title    = sprintf('%s (%s)', con_name, SPM.xCon(second_level_contrast_idx).name);
+        xSPM.thresDesc = thresh_desc;
+        xSPM.u        = thresh_p;
+        xSPM.k        = extent_k;
+        xSPM.units    = {'mm' 'mm' 'mm'};
+% colormap(hot)
+        [hReg, xSPM, SPM] = spm_results_ui('Setup', xSPM);
+
+        % Show sections view
+        try
+            spm_sections(xSPM, hReg, fullfile(spm('Dir'), 'canonical', 'single_subj_T1.nii'));
+        catch
+            warning('Could not display section view for %s', con_name)
+        end
+
+        % Optional: save the current graphics window
+        if save_figures
+            figfile = fullfile(png_outDir, sprintf('colorful_%s_results_k_%s_%s_conidx_%d_%s_%s.png', prefix, num2str(extent_k), con_name, second_level_contrast_idx, num2str(thresh_desc), num2str(thresh_p)));
+            saveas(spm_figure('FindWin', 'Graphics'), figfile);
+            % figfile = fullfile(png_outDir, sprintf('results_%s_conidx_%d_%s_%s.fig', con_name, second_level_contrast_idx, num2str(thresh_desc), num2str(thresh_p)));
+            % saveas(spm_figure('FindWin', 'Graphics'), figfile);
+            fprintf('Saved figure: %s\n', figfile);
+        end
+
+
+
+    ax = findall(gcf,'Type','axes');
+
+    img = ax(10).Children(6);
+C   = img.CData;
+
+bg = mode(C(:));   % or: bg = max(C(:));
+
+img.AlphaData = double(C ~= bg);
+% img.AlphaDataMapping = 'none';
+
+ax(10).Color = 'w';
+colormap(ax(10), parula)
+
+
+% img.CData(find(img.CData == 64))=NaN
+% 
+% C = img.CData;
+% figure
+% imagesc(C)
+
+
+    end
+end
+
+fprintf('\nFinished showing all second-level results.\n');
