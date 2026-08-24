@@ -18,7 +18,7 @@ def chunk_list(lst, n):
 inFolder = 'epochs_potato_old2'
 subjectID = '19840930bigs'
 potatoFile = f'/home/reabt/experiments/ncc/MEG/data/{inFolder}/{subjectID}/{subjectID}_maxfilter_True__ica_True__l_pass_30__downsample_f_1000__h_pass_1__-1.0-1.0s_potato_info.pkl'
-epochsFile_clean = f'/home/reabt/experiments/ncc/MEG/data/{inFolder}/{subjectID}/{subjectID}_maxfilter_True__ica_True__l_pass_30__downsample_f_1000__h_pass_1__-1.0-1.0s__useField_True_meg-epo_clean.fif'
+epochsFile_clean = f'/home/reabt/experiments/ncc/MEG/data/{inFolder}/{subjectID}/{subjectID}_maxfilter_True__ica_True__l_pass_30__downsample_f_1000__h_pass_1__-1.0-1.0s__useField_True_meg_clean-epo.fif'
 epochsFile_unclean = f'/home/reabt/experiments/ncc/MEG/data/{inFolder}/{subjectID}/{subjectID}_maxfilter_True__ica_True__l_pass_30__downsample_f_1000__h_pass_1__-1.0-1.0s_meg-epo.fif'
 potato = joblib.load(potatoFile)
 

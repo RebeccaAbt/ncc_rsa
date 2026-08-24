@@ -235,7 +235,7 @@ class DebugEpochs(Job):
 		print_potato_summary(epochs_meg, epochs_meg_clean, potato_info)
 
 		print('--------------------\n saving Epochs .... \n--------------------\n', flush=True)
-		epochs_meg_clean.save(f'/home/reabt/experiments/ncc/MEG/data/epochs/{subject_id}/{subject_id}_{suffix}_meg-epo_clean.fif')
+		epochs_meg_clean.save(f'/home/reabt/experiments/ncc/MEG/data/epochs/{subject_id}/{subject_id}_{suffix}_meg_clean-epo.fif')
 		joblib.dump(events, f'/home/reabt/experiments/ncc/MEG/data/epochs/{subject_id}/{subject_id}_{suffix}_meg-events_clean.pkl')
 		joblib.dump(potato_info, f'/home/reabt/experiments/ncc/MEG/data/epochs/{subject_id}/{subject_id}_{suffix}_potato.pkl')
 

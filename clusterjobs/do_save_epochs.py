@@ -32,7 +32,7 @@ class SaveEpochs(Job):
 	def run(self, 
 			subjectID,
 			run_part = 0, # 0: both oarts, 1: only part 1, 2: only part 2
-		 	job_data_folder = 'epochs_clean/ica', # <============= !!!
+		 	epochsDir = MEG_EPOCHS_DIR,
 		 	blockwise_ica=False,
 			ica=True,
 			ica_out_root= ICA_DIR,
@@ -48,31 +48,36 @@ class SaveEpochs(Job):
 							 'tmax': 1.5,
 							 'baseline': None,
 							 'preload': True,
-							 'l_freq': None,
 							 'h_freq': None, 
-							 'detrend': 1}, # 0=constant, 1=linear, None=no detrending
+							 'detrend': 1,
+							 'fs': 1000}, # 0=constant, 1=linear, None=no detrending
 
 		 	ica_settings = {'ica_method': "picard",
 							'fit_params': None,
 							'ica_threshold': 0.35,
-							'n_components': 50, 
+							'n_components': 50,
+							'eog': True,
+							'ecg': True,							
 							'train_thresh': 2,
 							'train_freq': 16.7},
 			use_mean_headpos = False
 			):
 		
-		l_freq = epochs_settings.pop('l_freq')
-		h_freq = epochs_settings.pop('h_freq')
+		# l_freq = epochs_settings.pop('l_freq')
 
+		h_freq = epochs_settings.pop('h_freq')
+		fs 	   = epochs_settings.pop('fs')
 		_, ica_outFiles = get_outFilePaths(subjectID, ica_out_root)
 		_, ica_outFiles_blockwise = get_blockwise_outFilePaths(subjectID, ica_out_root)
 		print('ica_outFiles', ica_outFiles)
 		print('ica_outFiles_blockwise', ica_outFiles_blockwise)
 		print(f'---------------------------------------------\n Overwrite is set to {overwrite}. \n---------------------------------------------', flush=True)
 
-		os.makedirs(f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/', exist_ok=True)
+		# os.makedirs(f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/', exist_ok=True)
+		subjIcaDir = os.path.join(epochsDir, 'ica', subjectID)
+		os.makedirs(subjIcaDir, exist_ok=True)
 
-		suffix =  f'maxfilter_{preproc_settings['maxfilter']}__ica_{ica}__{l_freq}-{h_freq}Hz__fs_1000__[{epochs_settings['tmin']}_{epochs_settings['tmax']}]s_detrend_{epochs_settings['detrend']}'# _meg-epo.dat'
+		suffix =  f'maxfilter_{preproc_settings['maxfilter']}__ica_{ica}__{preproc_settings['h_pass']}-{h_freq}Hz__fs_{fs}__[{epochs_settings['tmin']}_{epochs_settings['tmax']}]s_detrend_{epochs_settings['detrend']}'# _meg-epo.dat'
 
 		# if os.path.isfile(meg_outfile) and not overwrite:
 		# 	print(f"Epochs file already exists for {subject_id} with settings: {suffix}. Skipping computation.")
@@ -176,9 +181,9 @@ class SaveEpochs(Job):
 			
 			meg_raw = data_raw.pick(['meg', 'stim']) 
 			
-			if l_freq or h_freq:
+			if h_freq:
 				meg_raw.filter(
-						l_freq=l_freq,
+						l_freq=None,
 						h_freq=h_freq,
 						picks="meg",
 						method="fir",
@@ -189,12 +194,18 @@ class SaveEpochs(Job):
 						phase="zero",
 						n_jobs=-1,
 					)
+
+			if fs != 1000:
+				meg_raw.resample(fs)	
+
 								
 			epochs_meg, events = get_epochs_R(meg_raw, event_info, epochs_settings)
-			epochsFile = f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/{subjectID}_{suffix}_meg-epo.fif'
+			# epochsFile = f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/{subjectID}_{suffix}_meg-epo.fif'
+			epochsFile = os.path.join(subjIcaDir,f'{subjectID}_{suffix}_meg-epo.fif')
+
 			print(f'--------------------\n saving Epochs to {epochsFile}.... \n--------------------\n', flush=True)
 			epochs_meg.save(epochsFile, overwrite = True)
-			joblib.dump(events, f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}_events.pkl')
+			joblib.dump(events, os.path.join(epochsDir, 'ica', f'{subjectID}_events.pkl'))
 
 			# doing bio epochs after meg epochs, because we need to remove the "detrend" that causes errors if applied to bio data only
 
@@ -203,7 +214,8 @@ class SaveEpochs(Job):
 			epochs_bio, events = get_epochs_R(bio_clean_raw, event_info, epochs_settings)
 			print('--------------------\n saving Epochs .... \n--------------------\n', flush=True)
 
-			epochs_bio.save(f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/{subjectID}_{suffix}_bio-epo.fif', overwrite = True)
+			# epochs_bio.save(f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/{subjectID}_{suffix}_bio-epo.fif', overwrite = True)
+			epochs_bio.save(os.path.join(subjIcaDir, f'{subjectID}_{suffix}_bio-epo.fif'), overwrite = True)
 			# joblib.dump(events, f'{MEG_DATA_DIR}/{job_data_folder}/{subject_id}/{subject_id}_{suffix}_bio-events.pkl')
 
 

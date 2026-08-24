@@ -16,7 +16,6 @@ import numpy as np
 from obob_mne.events import read_events_from_analogue
 from utils.events import fix_events_from_analogue
 from utils.ica import *
-from utils.ica import _block_key
 from copy import deepcopy
 
 
@@ -351,44 +350,14 @@ def run_cleaner_blockwise_ica_part1(
 ):
 	print(f"---------------------------------------------\n now doing: Raw.run_cleaner_blockwise_ica_part1 \n---------------------------------------------", flush=True)
 
-	block_indices = _get_ncc_block_indices(subject_id)
-
-	_, outFiles = get_blockwise_outFilePaths(
+	raw_blocks, block_indices = _load_crop_maxfilter_filter_blocks(
 		subject_id=subject_id,
-		out_root=ica_out_root,
-		block_indices=block_indices,
-	)	
-
-
-	key = _block_key(block_indices[-1])
-	last_block_files = outFiles["blocks"][key]
-
-	if last_block_files["file_raw"].exists(): # load data of all blocks
-		print(f"---------------------------------------------\n Maxfiltered raw file for last block exists in {last_block_files["file_raw"]}. We therefore load the Maxfiltered data instead of computing it again\n---------------------------------------------", flush=True)
-		
-		raw_blocks = []
-		for block in (block_indices):
-			print(f"loading block {block}")
-			key = _block_key(block)
-			block_files = outFiles["blocks"][key]
-			raw_file = block_files["file_raw"]
-
-			raw_blocks.append(mne.io.read_raw_fif(raw_file, preload=True))
-
-	else: # save data of all blocks. If we do this we can drop some noisy sections of the continuous data before doing the ICA in clase the noise is so bad that it messes up the ICA
-		raw_blocks, block_indices = _load_crop_maxfilter_filter_blocks(
-			subject_id=subject_id,
-			maxfilter=maxfilter,
-			notch=notch,
-			l_pass=l_pass,
-			h_pass=h_pass,
-			use_mean_headpos = use_mean_headpos
-		)
-
-		for raw, block in zip(raw_blocks, block_indices):
-			key = _block_key(block)
-			block_files = outFiles["blocks"][key]
-			raw.save(block_files["file_raw"], overwrite=True)
+		maxfilter=maxfilter,
+		notch=notch,
+		l_pass=l_pass,
+		h_pass=h_pass,
+		use_mean_headpos = use_mean_headpos
+	)
 
 	if ica:
 		run_my_blockwise_ica_part1(
@@ -403,8 +372,6 @@ def run_cleaner_blockwise_ica_part1(
 			ica_resample_freq=200,
 			ica_hp_freq=1.0,
 			ica_lp_freq=45.0,
-			eog=eog,
-			ecg=ecg,
 			eog_corr_thresh=ica_threshold,
 			ecg_corr_thresh=ica_threshold,
 			train_freq=train_freq,

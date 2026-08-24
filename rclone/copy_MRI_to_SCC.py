@@ -8,30 +8,30 @@ import subprocess
 
 
 subjectIDs = [  
-                # '19840930bigs',
-                # '19880331igse',
-                # '19910703eigl',
-                # '19910823ssld',
-                # '19921205crfi',
-                # '19951227eipo',
-                # '19960628gblm',
-                # '19960630cahi',
-                # '19961123crsh',
-                # '19970218crpo',
-                # '19970302urmr',
-                # '19970520smsr',
-                # '19991211mrbn',
-                # '20000118sbnb',
-                # '20010917rswg',
-                # '20020123sbhp',
-                # '20020705ttbr',
-                # '20040627vrrj',
-                # '20040630gbaf',
-                # '20050204vrao',
-                # '20070324hlti',
-                # '19930306sbpe',
-                # '20050610atbu', 
-                # '20050615buea',
+                '19840930bigs',
+                '19880331igse',
+                '19910703eigl',
+                '19910823ssld',
+                '19921205crfi',
+                '19951227eipo',
+                '19960628gblm',
+                '19960630cahi',
+                '19961123crsh',
+                # '19970218crpo', # bad subj
+                '19970302urmr',
+                '19970520smsr',
+                '19991211mrbn',
+                '20000118sbnb',
+                '20010917rswg',
+                '20020123sbhp',
+                '20020705ttbr',
+                '20040627vrrj',
+                '20040630gbaf',
+                '20050204vrao',
+                '20070324hlti',
+                '19930306sbpe',
+                '20050610atbu', 
+                '20050615buea',
                 '20021027sldn'
                 ]
 
@@ -73,19 +73,19 @@ for subj in subjectIDs:
 
     paths = [
         {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/orig_functionals_trimmed', 
-        'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/orig_functionals_trimmed'},
+        'outDir': f'/home/scc_e_393956/Desktop/reabt/ncc/MRI/sync/{subj}/orig_functionals_trimmed'},
 
         {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/orig_structurals', 
-        'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/orig_structurals'},
+        'outDir': f'/home/scc_e_393956/Desktop/reabt/ncc/MRI/sync/{subj}/orig_structurals'},
 
-        {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/NCC/firstLevel_sensory_M1B', 
-        'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/NCC/firstLevel_sensory_M1B'},
+        # {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/NCC/firstLevel_sensory_M1B', 
+        # 'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/NCC/firstLevel_sensory_M1B'},
 
-        {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/NCC/firstLevel_sensory_M1C', 
-        'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/NCC/firstLevel_sensory_M1C'},
+        # {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/NCC/firstLevel_sensory_M1C', 
+        # 'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/NCC/firstLevel_sensory_M1C'},
 
-        {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/NCC/prepro_V1B', 
-        'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/NCC/prepro_V1B'}
+        # {'inDir': f'mri:/data_MRI/neurokog/NCC25/analyze_fin/{subj}/NCC/prepro_V1B', 
+        # 'outDir': f'/home/reabt/experiments/ncc/MRI/data/sync/{subj}/NCC/prepro_V1B'}
         ]
 
 

@@ -22,7 +22,7 @@ job_kwargs = job_setup(ram='128',
 
 job_cluster = JobCluster(**job_kwargs)
 
-job_cluster.add_job(SyncEmptyRoom)
+job_cluster.add_job(SyncMRI)
 
 
 job_cluster.submit(do_submit=True)

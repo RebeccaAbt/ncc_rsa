@@ -61,7 +61,7 @@ def get_MRI_subjects(remove_bad=True, do_print=True, inDir = MRI_RAW_DIR):
 	"""
 
 	
-	all_subjects = get_all_subjects()
+	all_subjects = get_all_subjects(remove_bad=remove_bad)
 
 	MRI_subjects = []
 

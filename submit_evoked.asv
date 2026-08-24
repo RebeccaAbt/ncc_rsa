@@ -1,0 +1,68 @@
+addpath('/home/scc_e_393956/MATLAB Add-Ons/plus-slurm-matlab/')
+myDir = '/home/scc_e_393956/ncc/rsa';
+cd(myDir)
+addpath('/home/scc_e_393956/ncc/rsa/clusterjobs_mat/')
+
+cluster = parcluster('SCC');
+cluster.JobStorageLocation = '/home/scc_e_393956/ncc/rsa/jobs/matlab';
+%%
+cluster.NumWorkers = 4;
+cluster.NumThreads = 8;
+
+% If SubmitArguments cannot be set directly on the cluster object,
+% specify memory per task via the 'AdditionalProperties' for the job
+% using Job.CustomSubmitArgs (supported by some integrations) or by
+% passing 'SubmitArguments' through batch's 'Profile'/'AdditionalProperties'.
+% Here we set a custom submit argument on the job after creating it.
+options.inDir = '/home/scc_e_393956/Desktop/reabt/ncc/MEG/epochs_clean2/manual_finish/';
+options.pattern = 'maxfilter_True__ica_True__0.5-NoneHz__fs_1000__[-1.5_1.5]s_detrend_0_meg_clean-epo';
+options.outDir = '/home/scc_e_393956/Desktop/reabt/ncc/MEG/matlab_evoked/';
+
+outPath = fullfile(options.outDir, options.pattern);
+if ~isfolder(outPath)
+    mkdir(outPath)
+end
+
+inDirs = dir(options.inDir);
+all_subjects = {inDirs([inDirs.isdir]).name};
+all_subjects = all_subjects(3:end);
+all_subjects = all_subjects(1:2);
+
+jobs = cell(size(all_subjects));
+
+for i = 1:numel(all_subjects)
+
+    % Create job without submit args
+    j = batch( ...
+        cluster, ...
+        @scc_evoked, ...
+        0, ...
+        {all_subjects{i}, options}, ...
+        cluster = parcluster('SCC');
+
+    % Example: request 128 GB for the whole job
+    cluster.SubmitArguments = '--mem=128G';
+
+    % OR: request 16 GB per CPU and 4 CPUs per task
+    % (use together with NumThreads/ProcsPerNode as appropriate)
+    cluster.SubmitArguments = '--mem-per-cpu=16G -c 4';
+
+    % Newer API: set AdditionalSubmitArgs (R2024a+)
+    cluster.AdditionalProperties.AdditionalSubmitArgs = '--mem=128G';
+        'Pool', 0); % no worker pool inside the job
+
+    % Set memory via CustomSubmitArgs on the Job if supported by your integration.
+    % Example: request 128G per CPU (SLURM syntax). Adjust as needed for your scheduler.
+    try
+        j.AdditionalProperties.CustomSubmitArgs = '--mem-per-cpu=128G';
+    catch
+        % Fallback: try setting a field commonly accepted
+        try
+            j.CustomSubmitArgs = '--mem-per-cpu=128G';
+        catch
+            warning('Could not set CustomSubmitArgs on job object. Check cluster integration for how to specify submit args.');
+        end
+    end
+
+    jobs{i} = j;
+end

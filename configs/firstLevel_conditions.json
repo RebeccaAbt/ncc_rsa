@@ -1,0 +1,91 @@
+{
+  "conditions": [
+    {
+      "name": "aud_NT_hit_1",
+      "include": [
+        {
+          "column": "modality",
+          "operator": "equals",
+          "value": "1"
+        },
+        {
+          "column": "condition",
+          "operator": "equals",
+          "value": "1"
+        },
+        {
+          "column": "stimulus",
+          "operator": "equals",
+          "value": "1"
+        },
+        {
+          "column": "response",
+          "operator": "equals",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "name": "semantic",
+      "include": [
+        {
+          "column": "decision",
+          "operator": "equals",
+          "value": "semantic"
+        },
+        {
+          "column": "stimulus_role",
+          "operator": "equals",
+          "value": "non-target"
+        },
+        {
+          "column": "response_accuracy",
+          "operator": "not_equals",
+          "value": "incorrect-hit"
+        }
+      ]
+    },
+   {
+      "name": "orthographic",
+      "include": [
+        {
+          "column": "decision",
+          "operator": "equals",
+          "value": "orthographic"
+        },
+        {
+          "column": "stimulus_role",
+          "operator": "equals",
+          "value": "non-target"
+        },
+        {
+          "column": "response_accuracy",
+          "operator": "not_equals",
+          "value": "incorrect-hit"
+        }
+      ]
+    },
+   {
+      "name": "false-condition",
+      "include": [
+        {
+          "column": "decision",
+          "operator": "equals",
+          "value": "false-condition"
+        },
+        {
+          "column": "stimulus_role",
+          "operator": "equals",
+          "value": "non-target"
+        },
+        {
+          "column": "response_accuracy",
+          "operator": "not_equals",
+          "value": "incorrect-hit"
+        }
+      ]
+    }
+  ],
+  "onset_column": "onset",
+  "duration_column": "duration"
+}

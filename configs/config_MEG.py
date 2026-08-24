@@ -134,7 +134,7 @@ class MEGconfig_E(MEGconfig_Base):
 #         super().__init__(subjectID)
 #         self.dataDir = '/home/reabt/experiments/ncc/MEG/data'
 #         self.dataFolder = 'epochs_potato'
-#         self.filePattern = '*_MF__ICA__filter_1-30__fs_100__-1.0-1.0s_potato4grad__estim_oas__thres_z3_meg-epo_clean.fif'
+#         self.filePattern = '*_MF__ICA__filter_1-30__fs_100__-1.0-1.0s_potato4grad__estim_oas__thres_z3_meg_clean-epo.fif'
 #         self.configure_paths()
 
      
@@ -156,7 +156,7 @@ class MEGconfig_C(MEGconfig_Base):
 #         super().__init__(subjectID)
 #         self.dataDir = '/home/reabt/experiments/ncc/MEG/data'
 #         self.dataFolder = 'epochs_potato'
-#         self.filePattern = '*_MF__ICA__filter_1-30__fs_100__-1.0-1.0s_potato4grad__estim_oas__thres_z3_meg-epo_clean.fif'
+#         self.filePattern = '*_MF__ICA__filter_1-30__fs_100__-1.0-1.0s_potato4grad__estim_oas__thres_z3_meg_clean-epo.fif'
 #         self.configure_paths()
 
 

@@ -121,14 +121,14 @@ class SaveEpochs(Job):
 
 		# # 2a ~~~~~~~~~~~~~~~~ save cleaned epochs with orignal 1000 Hz fs
 		# print('--------------------\n saving cleaned 1000Hz Epochs .... \n--------------------\n', flush=True) # cleaned epochs with orignal 1000 Hz fs
-		# fileName = f'{outDir}/{subject_id}_{suffix}_{potato_suffix}_meg-epo_clean.fif'
+		# fileName = f'{outDir}/{subject_id}_{suffix}_{potato_suffix}_meg_clean-epo.fif'
 		# if not os.path.isfile(fileName):
 		# 	epochs_meg_clean.save(fileName)
 
 		# 3 ~~~~~~~~~~~~~~~~ downsample and save cleaned epochs
 		print('--------------------\n saving cleaned downsampled Epochs .... \n--------------------\n', flush=True)
 		suffix = get_suffix(h_pass, l_pass, fs=downsample_f, epochs_settings = epochs_settings)
-		fileName = f'{outDir}/{subject_id}_{suffix}_{potato_suffix}_meg-epo_clean.fif'
+		fileName = f'{outDir}/{subject_id}_{suffix}_{potato_suffix}_meg_clean-epo.fif'
 		if not os.path.isfile(fileName):
 			epochs_meg_clean.resample(downsample_f).save(fileName)
 
@@ -142,7 +142,7 @@ class SaveEpochs(Job):
 
 		print('--------------------\n saving cleaned 1000Hz Epochs .... \n--------------------\n', flush=True) # cleaned epochs with orignal 1000 Hz fs
 		suffix =  f'maxfilter_{maxfilter}__ica_{ica}__l_pass_{l_pass}__downsample_f_{fs}__h_pass_{h_pass}__{epochs_settings['tmin']}-{epochs_settings['tmax']}s__useField_{potato_setting['use_field']}'# _meg-epo.dat'
-		epochs_meg_clean.save(f'/home/reabt/experiments/ncc/MEG/data/{job_data_folder}/{subject_id}/{subject_id}_{suffix}_{potato_suffix}_meg-epo_clean.fif')
+		epochs_meg_clean.save(f'/home/reabt/experiments/ncc/MEG/data/{job_data_folder}/{subject_id}/{subject_id}_{suffix}_{potato_suffix}_meg_clean-epo.fif')
 
 		# downsampled cleaned epochs
 		fs = downsample_f
@@ -150,6 +150,6 @@ class SaveEpochs(Job):
 
 			print('--------------------\n saving cleaned downsampled Epochs .... \n--------------------\n', flush=True)
 			suffix =  f'maxfilter_{maxfilter}__ica_{ica}__l_pass_{l_pass}__downsample_f_{downsample_f}__h_pass_{h_pass}__{epochs_settings['tmin']}-{epochs_settings['tmax']}s__useField_{use_field}'# _meg-epo.dat'
-			epochs_meg_clean.resample(downsample_f).save(f'/home/reabt/experiments/ncc/MEG/data/{job_data_folder}/{subject_id}/{subject_id}_{suffix}_meg-epo_clean.fif')
+			epochs_meg_clean.resample(downsample_f).save(f'/home/reabt/experiments/ncc/MEG/data/{job_data_folder}/{subject_id}/{subject_id}_{suffix}_meg_clean-epo.fif')
 
 '''

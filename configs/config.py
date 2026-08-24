@@ -16,7 +16,7 @@ JOBS_DIR = f'{CODE_DIR}/jobs'
 
 #directories
 MEG_DATA_DIR			= '/home/scc_e_393956/Desktop/reabt/ncc/MEG'
-MEG_EVOKED_DIR 			= '/home/scc_e_393956/Desktop/reabt/ncc/MEG/epochs_clean'
+MEG_EPOCHS_DIR 			= '/home/scc_e_393956/Desktop/reabt/ncc/MEG/epochs_clean'
 MEG_CLEAN_EPOCHS_DIR 	= '/home/scc_e_393956/Desktop/reabt/ncc/MEG/epochs_clean/manual_finish'
 MEG_ICA_DIR 			= '/home/scc_e_393956/Desktop/reabt/ncc/MEG/ica'
 

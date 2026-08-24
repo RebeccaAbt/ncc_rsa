@@ -52,8 +52,6 @@ def run_my_ica(
 	ica_resample_freq=200,
 	ica_hp_freq=1.0,
 	ica_lp_freq=45.0,
-	eog=True,
-	ecg=True,
 	eog_corr_thresh=0.5,
 	ecg_corr_thresh=0.5,
 	train_freq=16.7,
@@ -83,10 +81,10 @@ def run_my_ica(
 		resample_freq=ica_resample_freq,
 		ica_hp_freq=ica_hp_freq,
 		ica_lp_freq=ica_lp_freq,
-		eog=eog,
+		eog=True,
 		surrogate_eog_chs=surrogate_eog_chs,
 		eog_corr_thresh=eog_corr_thresh,
-		ecg=ecg,
+		ecg=True,
 		ecg_corr_thresh=ecg_corr_thresh,
 		emg=False,
 		train=True,
@@ -496,7 +494,7 @@ def run_my_blockwise_ica_part1(
 
 		print(f"---------------------------------------------\n Fitting ICA for {subject_id}, {key}\n---------------------------------------------", flush=True)
 
-		# raw.save(block_files["file_raw"], overwrite=overwrite)
+		raw.save(block_files["file_raw"], overwrite=overwrite)
 
 		tmp_ica_raw = raw.copy().load_data()
 		tmp_ica_raw.filter(l_freq=ica_hp_freq, h_freq=ica_lp_freq)
@@ -525,7 +523,6 @@ def run_my_blockwise_ica_part1(
 			train_thresh=train_thresh,
 		)
 
-		print(f"--------------------------------- \n EOG : {eog} \n ECG: {ecg} \n---------------------------------", flush=True)
 		components_dict = {
 			comp_type: _as_unique_int_list(components)
 			for comp_type, components in components_dict.items()

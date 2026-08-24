@@ -17,7 +17,7 @@ obob_init_ft(cfg0);
 
 % paths need to be added AFTER obob init
 addpath('/home/reabt/Matlab_toolboxes/plus_slurm_matlab')
-addpath('/home/reabt/experiments/ncc/MRI/code/clusterjobs')
+addpath('/home/reabt/experiments/ncc/MRI/code/matlab')
 
 
 % -------------------------------------------------------------------------

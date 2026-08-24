@@ -104,7 +104,7 @@ def check_conditions_missing(info, info_full):
 			conditions_missing = True 
 			which_conditions_missing = np.setdiff1d(info_full['identifier'].values, info['identifier'].values) # missing conditions; key = 'identifiers' do identify condition in different runs
 			
-			print(f'\nwe have {which_conditions_missing.shape[0]} missing conditions --> using imputation\n')
+			print(f'\nwe have {which_conditions_missing.shape[0]} missing conditions --> maybe using imputation\n')
 	else:
 		print(f'\n-----------------------------------------------------------------\n'\
 				'at least one condition is missing in all runs \n --> using subject-specific instead of full conditions-info'\
@@ -340,6 +340,7 @@ def get_searchlight_RDMs_crossnobis(spm,
 		SL_beta = SL_beta[reg_mask.to_numpy(), :]
 
 		if conditions_missing: # if we have missing conditions
+			print("Doing imputation!", flush=True)
 			for id in which_conditions_missing:     
 				missing_identifier_idx = np.where(info_full['identifier'].values == id)[0].item()           # 1) index of identifier in full set of conditions
 				missing_condition = which_conditions_missing[0][:-5]                                        # 2) find indices/labels of condition in other runs of current data

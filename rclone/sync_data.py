@@ -14,7 +14,16 @@ from plus_slurm import Job
 class SyncMRI(Job):
 		def run(self):
 
-			rclone_cmd = "rclone copy   mri:/data_MRI/neurokog/NCC25/analyze_fin   /mnt/ceph/groups_hdd/SCCGroup/salzburg_brain_dynamics/reabt/ncc/MRI/ --filter '+ ????????????/NCC/firstLevel_sensory_M1C/**' --filter '+ ????????????/NCC/prepro_V1B/**' --filter '- *' -v"
+			rclone_cmd = ("rclone copy "
+				 "mri:/data_MRI/neurokog/NCC25/analyze_fin "
+				 "/mnt/ceph/groups_hdd/SCCGroup/salzburg_brain_dynamics/reabt/ncc/MRI/sync "
+				#  "--filter '+ ????????????/NCC/firstLevel_sensory_M1C/**' "
+				#  "--filter '+ ????????????/NCC/prepro_V1B/**' "
+				 "--filter '+ ????????????/orig_functionals_trimmed/**' "
+				 "--filter '+ ????????????/orig_structurals/**' "
+				 "--filter '- *' -v")
+
+			print('rclone command: \n', rclone_cmd, flush=True)
 
 			result = subprocess.run(rclone_cmd, shell=True, capture_output=True, text=True)
 			if result.returncode != 0:

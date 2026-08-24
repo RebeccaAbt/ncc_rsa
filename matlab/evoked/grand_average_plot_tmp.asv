@@ -1,0 +1,718 @@
+
+cd /home/scc_e_393956/ncc/rsa/
+clear all
+close all
+addpath('/home/scc_e_393956/MATLAB Add-Ons/Collections/fieldtrip/')
+ft_defaults()
+
+outDir_plots = '/mnt/ceph/groups_hdd/SCCGroup/salzburg_brain_dynamics/reabt/ncc/code_outputs/matlab_plots/ERF';
+
+addpath('/home/scc_e_393956/ncc/rsa/matlab/helpers')
+
+options.inDir = '/home/scc_e_393956/Desktop/reabt/ncc/MEG/epochs_clean2/manual_finish/';
+options.pattern = 'maxfilter_True__ica_True__0.5-20Hz__fs_100__[-4_4]s_detrend_None_clean_meg-epo';
+options.outDir = '/home/scc_e_393956/Desktop/reabt/ncc/MEG/matlab_evoked/';
+
+inDirs = dir(options.inDir);
+all_subjects = {inDirs([inDirs.isdir]).name};
+all_subjects = all_subjects(3:end);
+
+outDir = options.outDir;
+pattern = options.pattern;
+
+%%
+
+inFile_pattern = 'evoked_combined_afterAvg';
+is_combined = true;
+% sz = get(0,'ScreenSize');
+
+% sz = [1 1 1900 1200]; % horizontal
+sz = [1 1 1050 1680]; % vertical
+figsize = [0 sz(4)/2 sz(3) sz(4)/4];
+% % ------------------------ combined gradiometers:
+channel = 'meg';
+layout = 'neuromag306cmb.lay';
+% % ------------------------ uncombined gradiometers:
+% channel = 'megplanar';
+% layout = 'neuromag306planar.lay';
+% % ------------------------ combined all:
+% channel = 'meg';
+% layout = 'neuromag306all.lay';
+% ------------------------ mag only:
+% channel = 'megmag';
+% layout = 'neuromag306mag.lay';
+
+colors = [
+    [0 0.39215686274509803 0]; % darkgreen
+    [1 0.6470588235294118 0]; % orange
+    [0 0 1]; % blue
+    [0.5019607843137255 0 0.5019607843137255] % purple
+    ];
+
+if is_combined
+
+    channel_selection_r = {{'MEG1522+1523'}, {'MEG1912+1913'}, {'MEG1732+1733'}};
+    channel_selection_l = {{'MEG2642+2643'}, {'MEG2222+2223'}, {'MEG2512+2512'}};
+else
+    channel_selection_r = {{'MEG1522'}, {'MEG1912'}, {'MEG1732'}}; %#ok<UNRCH>
+    channel_selection_l = {{'MEG2642'}, {'MEG2222'}, {'MEG2512'}};
+
+    % ~~~ magnetometers
+    % channel_selection_r = {{'MEG1521'}, {'MEG1911'}, {'MEG1731'}};
+    % channel_selection_l = {{'MEG2641'}, {'MEG2221'}, {'MEG2511'}};
+end
+%%
+bl = [-0.5 0];
+
+% collect all subjects' evoked structs
+all_evoked = cell(numel(all_subjects),1);
+for s = 1:numel(all_subjects)
+    sub = all_subjects{s};
+
+    disp(sub)
+    f = fullfile(outDir, pattern, strcat(sub, '_', inFile_pattern, '.mat'));
+    if ~exist(f,'file')
+        error('File not found: %s', f)
+    end
+    tmp = load(f, 'evoked');
+
+    all_evoked{s} = tmp.evoked;
+end
+
+
+all_evoked = all_evoked(cellfun(@(c) ~isempty(c), all_evoked));
+% discover modalities and conditions from first subject
+first = all_evoked{1};
+modalities = fieldnames(first);
+conditions = fieldnames(first.(modalities{1}));
+
+% prepare cell arrays for grandaverage inputs per condition
+grand_inputs = struct();
+for m = 1:numel(modalities)
+    modname = modalities{m};
+    for c = 1:numel(conditions)
+        condname = conditions{c};
+        grand_inputs.(modname).(condname) = {};
+    end
+end
+
+% For each subject, select MEG channels and add to grand inputs
+for s = 1:numel(all_evoked)
+    ev = all_evoked{s};
+    for m = 1:numel(modalities)
+        modname = modalities{m};
+        for c = 1:numel(conditions)
+            condname = conditions{c};
+            if ~isfield(ev.(modname), condname)
+                continue
+            end
+            subj_ev = ev.(modname).(condname);
+
+            cfg = [];
+            cfg.channel = 'meg';
+
+            % create a shallow copy with only selected channels (compatible with ft_timelockgrandaverage)
+            sel = ft_selectdata(cfg, subj_ev);
+
+            % ---------------------------------------------------- trying to add baseline correction to the data
+            cfg = [];
+            cfg.baseline = bl;
+            sel = ft_timelockbaseline(cfg, sel);
+
+            grand_inputs.(modname).(condname){end+1} = sel; %#ok<AGROW>
+        end
+    end
+end
+
+% compute grand average for each modality/condition
+grand = struct();
+for m = 1:numel(modalities)
+    modname = modalities{m};
+    for c = 1:numel(conditions)
+        condname = conditions{c};
+        list = grand_inputs.(modname).(condname);
+        if isempty(list)
+            warning('No data for %s %s', modname, condname);
+            continue
+        end
+        cfg = [];
+        cfg.keepindividual = 'yes';
+        grand.(modname).(condname) = ft_timelockgrandaverage(cfg, list{:});
+    end
+end
+
+
+% Plotting: three modality panels in one figure
+%% ERF
+close all
+%
+figure('Name',strcat(inFile_pattern, '_mags_max'),'NumberTitle','off', 'Position',[0 600 400 300]);
+
+% figure('Name',strcat(inFile_pattern, '_mags_max'),'NumberTitle','off', 'Position',[0 200 1200 600]);
+for m = 1:3
+
+    modname = modalities{m};
+
+    ga1 = grand.(modname).(conditions{1});
+    ga2 = grand.(modname).(conditions{2});
+    ga3 = grand.(modname).(conditions{3});
+    ga4 = grand.(modname).(conditions{4});
+
+    cfg = [];
+    cfg.channel = 'megmag';
+    ga1 = ft_selectdata(cfg,ga1);
+    ga2 = ft_selectdata(cfg,ga2);
+    ga3 = ft_selectdata(cfg,ga3);
+    ga4 = ft_selectdata(cfg,ga4);
+
+    % find channel where ga3 has the highest peak value (max absolute peak across time)
+    ga_avg = squeeze(mean(ga3.individual, 1));
+    [~,peakIdx] = max(max(ga_avg, [],2));
+    chan_with_max_peak = ga3.label{peakIdx};
+    disp(['Channel with highest peak in ga3: ' chan_with_max_peak]);
+    % place that channel as the single selection for this subplot's array
+    % channel_selection_array{m} = {chan_with_max_peak};
+
+    chan_idx = find(strcmp(ga1.label,channel_selection_array{m}{1}));
+
+    ax = subplot(3, 1,m);
+    hold on
+    cfg = [];
+    cfg.showlegend = 'no';
+    cfg.channel = chan_with_max_peak;
+    cfg.linecolor = colors;
+    cfg.figure = ax;
+    cfg.linecolor = colors;
+    cfg.xlim = [-0.5 1.5];
+
+    ft_singleplotER(cfg, ga1, ga2, ga3, ga4);
+    % ft_multiplotER(cfg, ga1, ga2, ga3, ga4);
+
+    title(modname, 'Interpreter', 'none');
+    legend(conditions, 'Location', 'eastoutside', 'Interpreter', 'none');
+
+    hold off;
+end
+%% ======================================================================== Topos
+close all
+% channel_sel = 'meg';
+% layout_sel = layout;
+channel_sel = 'meg';
+layout_sel = 'neuromag306cmb.lay';
+
+xlims = [
+    [0 0.1];
+    [0.1 0.2];
+    [0.2 0.3];
+    [0.3 0.4];
+    [0.4 0.5];
+    [0.5 0.6];
+    [0.6 0.7];
+    [0.7 0.8];
+    [0.8 0.9];
+    [0.9 1];
+    ];
+
+
+figname = strcat('topo_', inFile_pattern,'_', channel_sel, '_', layout_sel); %, '_[', string(xlim(1)), '-', string(xlim(2)), ']')
+figure('Name',figname, 'NumberTitle','off', 'Position',sz);
+
+for x = 1:length(xlims)
+
+    xlim = xlims(x,:);
+
+    for m = 1:3
+        modname = modalities{m};
+        ga1 = grand.(modname).(conditions{1});
+
+        % labels = ga1.label;
+        % mask = cellfun(@(s) endsWith(s, '2'), labels);
+        % channel_sel = labels(cellfun(@(s) endsWith(s, '2'), labels));
+
+        ax = subplot(length(xlims),3,m+3*(x-1));
+        cfg = [];
+        cfg.xlim = xlim;
+        cfg.comment = 'xlim';
+        cfg.channel = channel_sel;
+        cfg.layout =  layout_sel;
+        cfg.figure = ax;
+        cfg_out = ft_topoplotER(cfg, ga1);
+        numel(cfg_out.layout.label)
+
+        title(modname, 'Interpreter', 'none');
+    end
+
+end
+%% ======================================================================== multiplot
+% 
+% figure('Name',strcat('multiplot', inFile_pattern), 'NumberTitle','off', 'Position',figsize);
+% 
+% for m = 1:3
+%     modname = modalities{m};
+%     ga3 = grand.(modname).(conditions{3});
+%     labels = ga3.label;
+%     % mask = cellfun(@(s) endsWith(s, '2'), labels);
+%     channel_sel = labels(cellfun(@(s) endsWith(s, '2'), labels));
+%     ax = subplot(1,3,m);
+%     cfg = [];
+%     % cfg.xlim = [0.5];
+%     cfg.channel = channel_sel;
+%     cfg.layout =  layout_sel;
+% 
+%     cfg.figure = ax; %figure('Name',strcat('multiplot', inFile_pattern,'_', modname), 'NumberTitle','off', 'Position',[1 1 1900 1000]);
+%     out_cfg(m) = ft_multiplotER(cfg, ga3);
+% 
+%     title(modname, 'Interpreter', 'none');
+% end
+
+%% ======================================================================== single subject Topos + multiplot
+% figure('Name',strcat('topo_', inFile_pattern), 'NumberTitle','off', 'Position',figsize);
+
+% channel_sel = 'meg';
+% layout_sel = layout;
+channel_sel = 'meg';
+layout_sel = 'neuromag306cmb.lay';
+figsize = [0 sz(4)/2 sz(3) sz(4)/8];
+close all
+for s = 1:10
+
+    sub = all_subjects{s};
+    ev = all_evoked{s};
+
+    figure('Name',strcat('topo_', inFile_pattern, '_', sub), 'NumberTitle','off', 'Position',figsize);
+
+    for m = 1:3
+        modname = modalities{m};
+
+        data_subj = ev.(modname).(conditions{3});
+
+
+        % ~~~ used this when I wanted to only plot the gradiometers ending with "2"
+        % labels = ga3.label;
+        % channel_sel = labels(cellfun(@(s) endsWith(s, '2'), labels));
+
+        ax = subplot(1,3,m);
+        cfg = [];
+        % cfg.xlim = [0.5];
+
+        cfg.channel = channel_sel;
+        cfg.layout =  layout_sel;
+        cfg.figure = ax;
+        ft_topoplotER(cfg, data_subj);
+
+        title(modname, 'Interpreter', 'none');
+    end
+
+end
+% figure('Name',strcat('multiplot', inFile_pattern), 'NumberTitle','off', 'Position',figsize);
+
+% for m = 1:3
+%     modname = modalities{m};
+%     ga3 = grand.(modname).(conditions{3});
+%     labels = ga3.label;
+%     % mask = cellfun(@(s) endsWith(s, '2'), labels);
+%     channel_sel = labels(cellfun(@(s) endsWith(s, '2'), labels));
+%     % ax = subplot(1,3,m);
+%     cfg = [];
+%     % cfg.xlim = [0.5];
+%     cfg.channel = channel_sel;
+%     cfg.layout =  layout_sel;
+%
+%     cfg.figure = figure('Name',strcat('multiplot', inFile_pattern,'_', modname), 'NumberTitle','off', 'Position',[1 1 1900 1000]);
+%     ft_multiplotER(cfg, ga3);
+%
+%     title(modname, 'Interpreter', 'none');
+% end
+
+
+%%
+% -----------------------------
+% Plot evoked responses per subject
+% -----------------------------
+% figsize = [0 sz(4)/2 sz(3) sz(4)/17];
+for s = 2:3 %numel(all_evoked)
+    sub = all_subjects{s};
+    ev = all_evoked{s};
+
+    hFig = figure('Name', ['subject_' sub], 'NumberTitle','off', 'Position',...
+        figsize);
+
+    for m = 1:min(3,numel(modalities))  % assume up to 3 modality panels
+        modname = modalities{m};
+
+
+        ax = subplot(3,1,m);
+
+        cfg = [];
+        cfg.xlim = 'maxmin';
+        cfg.ylim = 'maxmin';
+        cfg.showlegend = 'no';
+        cfg.channel = channel_selection_r{m};
+        cfg.linecolor = colors;
+
+        % cfg.layout = layout;
+        cfg.figure = ax;
+        cfg.interactive = 'no';
+        cfg.linewidth = 1;
+
+        % collect condition timelocks for this subject/modality
+        plots = {};
+        for c = 1:numel(conditions)
+            condname = conditions{c};
+            if isfield(ev.(modname), condname)
+                sel = ft_selectdata(cfg, ev.(modname).(condname));
+                plots{end+1} = sel; %#ok<AGROW>
+            end
+        end
+
+        if isempty(plots)
+            title(ax, [modname ' (no data)'], 'Interpreter','none');
+            continue
+        end
+
+        cfg_out = ft_singleplotER(cfg, plots{:}); % plot
+        h = cfg_out.figure.Children;
+        for i=1:numel(h)
+            c = get(h(i), 'Color');
+            set(h(i), 'Color', [c 0.7]);
+        end
+
+        title(modname, 'Interpreter','none');
+        legend(conditions, 'Location','eastoutside', 'Interpreter','none');
+    end
+
+    % saveas(hFig, fullfile(outDir, sprintf('%s_evoked_subject_%s.png', pattern, sub)));
+end
+
+%% ======================================================================= plot all subj evoked in 1 plot
+close all
+channel_sel = 'meggrad';
+% n_best = 1;
+% thisCondition = 3;
+
+
+for n_best = [10]
+    for thisCondition = [1 3]
+        f = figure('Name',strcat(inFile_pattern, '_mags'),'NumberTitle','off', 'Position',[0 0 1200 1000]);
+        for m = 1:3
+
+            outFile_evoked_all = fullfile(outDir_plots, strcat(conditions{thisCondition}, '_', string(n_best), 'ch_evoked_allSubj_grads_bl[', string(bl(1)), '_', string(bl(2)), '].png'));
+
+            modname = modalities{m};
+
+            [ga1, ga2, ga3, ga4] = sel_ga(grand, modname, conditions, channel_sel);
+            eval(sprintf('[chan_with_max_peak, peakIdx]  = get_peak_idx_n(ga%d, n_best, tlim);', thisCondition));
+            t = ga1.time;
+
+            eval(sprintf('this_ga = ga%d;', thisCondition));
+
+            if  n_best == 1
+                data = squeeze(this_ga.individual(:,peakIdx,:));
+            else
+                data = squeeze(mean(this_ga.individual(:,peakIdx,:),2));
+            end
+
+            subplot(3, 1, m)
+            hold on
+            h = plot(t, data);
+            for i=1:numel(h)
+                c = get(h(i), 'Color');
+                set(h(i), 'Color', [c 0.2]);
+            end
+            cfg = [];
+            cfg.showlegend = 'no';
+            cfg.channel = chan_with_max_peak;
+            cfg.linecolor = colors;
+            cfg.figure = gcf();
+            cfg.linecolor = colors;
+            % cfg.xlim = [-0.5 1.5];
+            ft_singleplotER(cfg, ga1, ga2, ga3, ga4);
+
+            ylim([min(data,[],'all') max(data,[],'all')])
+            title(modname, 'Interpreter', 'none');
+
+        end
+
+        saveas(f, outFile_evoked_all)
+
+    end %for n_best = [1 5 10];
+end %for thisCondition = [1 3];
+
+
+%% Trying SingleplotER
+
+figure('Name',strcat(inFile_pattern, '_grads_2'),'NumberTitle','off', 'Position',figsize);
+
+for m = 1:3
+    channel_selection_array = channel_selection_r;
+
+    modname = modalities{m};
+
+    ga1 = grand.(modname).(conditions{1});
+    ga2 = grand.(modname).(conditions{2});
+    ga3 = grand.(modname).(conditions{3});
+    ga4 = grand.(modname).(conditions{4});
+
+    % [mean_response, sem_response] = get_variance(ga3, chan_idx);
+    chan_idx = find(strcmp(ga1.label,channel_selection_array{m}{1}));
+    % if is_combined
+    %     ga1.grad.chantype(1:102) = repmat({'meggrad'}, 1, 102);
+    %     ga2.grad.chantype(1:102)=repmat({'meggrad'}, 102,1);
+    %     ga3.grad.chantype(1:102)=repmat({'meggrad'}, 102,1);
+    %     ga4.grad.chantype(1:102)=repmat({'meggrad'}, 102,1);
+    % end
+    ax = subplot(3,1,m);
+    hold on
+    cfg = [];
+    % cfg.xlim = 'maxmin';
+    cfg.showlegend = 'no';
+    % cfg.channel = 'meg';
+    cfg.channel = channel_selection_array{m};
+    cfg.linecolor = colors;
+    % cfg.layout = layout;
+    cfg.figure = ax;
+    cfg.linecolor = colors;
+
+    ft_singleplotER(cfg, ga1, ga2, ga3, ga4);
+    % ft_multiplotER(cfg, ga1, ga2, ga3, ga4);
+
+    title(modname, 'Interpreter', 'none');
+    legend(conditions, 'Location', 'best', 'Interpreter', 'none');
+
+
+    hold off;
+end
+
+
+%% ======================================================================== FINAL test plot: plot ERF and Plot Topos with marked channel next to it
+
+
+
+channel_sel = 'meggrad';
+% layout_sel = 'neuromag306cmb.lay';
+
+layout_sel = 'neuromag306cmb_helmet';
+
+for thisCondition = [1]
+
+    for n_best = [1 5 10]
+
+        outFile_topo = fullfile(outDir_plots, strcat(conditions{thisCondition}, '_', string(n_best), 'ch_topo_combined_grads_bl[', string(bl(1)), '_', string(bl(2)), '].eps'));
+        outFile_evoked = fullfile(outDir_plots, strcat(conditions{thisCondition}, '_', string(n_best), 'ch_evoked_combined_grads_bl[', string(bl(1)), '_', string(bl(2)), '].eps'));
+        tlim = [0,1];
+
+        xlims = [
+            [0 0.1];
+            [0.1 0.2];
+            [0.2 0.3];
+            [0.3 0.4];
+            [0.4 0.5];
+            [0.5 0.6];
+            [0.6 0.7];
+            [0.7 0.8];
+            [0.8 0.9];
+            [0.9 1];
+            ];
+
+        % ------------------------------- evoked
+
+        f = figure('Name',strcat(inFile_pattern, '_', channel_sel, '_', string(n_best), '_best'),'NumberTitle','off', 'Position',[0 0 1900 800]);
+        f.set('InnerPosition', f.get('OuterPosition'))
+        nrows = 3;
+        ncols = 3; % +1 for the ERPS and +2 because I want the ERPs to be broader + 2 zoomed erp
+
+        for m = 1:3
+
+            modname = modalities{m};
+
+            [ga1, ga2, ga3, ga4] = sel_ga(grand, modname, conditions, channel_sel);
+
+            % [chan_with_max_peak, peakIdx]  = get_peak_idx_n(ga1, n_best, tlim);
+            eval(sprintf('[chan_with_max_peak, peakIdx]  = get_peak_idx_n(ga%d, n_best, tlim)', thisCondition));
+
+            t = ga1.time;
+
+            hold on
+
+            % cfg = []; % if w
+            % cfg.showlegend = 'no';
+            % cfg.channel = chan_with_max_peak;
+            % cfg.linecolor = colors;
+            % cfg.figure = ax;
+            % cfg.linecolor = colors;
+            % cfg.xlim = [-4 4];
+            % ft_singleplotER(cfg, ga1, ga2, ga3, ga4);
+
+
+            idx = m+(m-1)*(ncols-1);
+            ax = subplot(nrows, ncols, [idx:idx+1]);
+            hold on
+            for k = 1:4
+                ga = eval(sprintf('ga%d',k)); % ga1..ga4
+                if n_best == 1
+                    data_ind = squeeze(ga.individual(:, peakIdx, :)); % subjects x time
+                else
+                    data_ind = squeeze(mean(ga.individual(:, peakIdx, :), 2));
+                end
+                shadedErrorBar(t, data_ind, {@mean,@(x) std(x,0,1) / sqrt(size(x,1))}, ...
+                    'plotAxes', ax, 'lineProps', {'Color', colors(k,:)},'transparent',1)
+            end
+
+            title(modname, 'Interpreter', 'none');
+            legend(conditions, 'Location', 'best', 'Interpreter', 'none');
+            hold off;
+
+            idx = idx+2;
+            ax = subplot(nrows, ncols, idx);
+            hold on
+
+            xmin = find(t<=-0.5,1,"last");
+            xmax = find(t>=1,1);
+            for k = 1:4
+                ga = eval(sprintf('ga%d',k)); % ga1..ga4
+                if n_best == 1
+                    data_ind = squeeze(ga.individual(:, peakIdx, [xmin:xmax])); % subjects x time
+                else
+                    data_ind = squeeze(mean(ga.individual(:, peakIdx, [xmin:xmax]), 2));
+                end
+                shadedErrorBar(t(xmin:xmax), data_ind, {@mean,@(x) std(x,0,1) / sqrt(size(x,1))}, ...
+                    'plotAxes', ax, 'lineProps', {'Color', colors(k,:)},'transparent',1)
+            end
+
+            hold off
+
+        end
+  
+        % saveas(f, outFile_evoked)
+        % exportgraphics(f, outFile_evoked, 'ContentType', 'image', 'Resolution',300, 'Padding','tight');
+        % ------------------------------- topos
+
+        f = figure('Name',strcat(inFile_pattern, '_', channel_sel, '_', string(n_best), '_best'),'NumberTitle','off', 'Position',[0 0 1900 800]);
+        f.set('InnerPosition', f.get('OuterPosition'))
+
+        for m = 1:3
+
+            modname = modalities{m};
+
+            [ga1, ga2, ga3, ga4] = sel_ga(grand, modname, conditions, channel_sel);
+
+            eval(sprintf('this_ga = ga%d', thisCondition));
+
+            [chan_with_max_peak, peakIdx]  = get_peak_idx_n(this_ga, n_best, tlim);
+
+            t = ga1.time;
+
+            idx = m+(m-1)*(length(xlims)-1);
+
+            for x = 1:length(xlims)
+
+                xlim = xlims(x,:);
+
+                modname = modalities{m};
+                ga4topo = grand.(modname).(conditions{thisCondition}); % because we need all channels for the correct layout
+
+                ax = subplot(nrows, length(xlims), idx+ (x-1));
+
+                cfg = [];
+                cfg.xlim = xlim;
+                cfg.comment = 'xlim';
+                % cfg.zlim = [zmin zmax];
+                switch thisCondition
+                    case 1
+                        cfg.zlim = [-2e-13 15e-13];
+                    case 3
+                        cfg.zlim = [-6e-13 4e-12];
+                end
+                cfg.channel = channel_sel;
+                cfg.layout =  layout_sel;
+                cfg.figure = ax;
+                cfg.marker = 'off';
+                cfg.highlight = 'on';
+                cfg.commentpos = 'middlebottom';
+                cfg.highlightchannel  = chan_with_max_peak;
+                cfg.highlightsize = 8;
+                cfg.highlightcolor = [1 0 0];
+                cfg.highlightsymbol = 'o';
+                % if x == length(xlims)
+                % cfg.colorbar = 'eastoutside';
+                % end
+                cfg_out = ft_topoplotER(cfg, ga4topo);
+
+            end %for xlims
+        end
+        % saveas(f, outFile_topo)
+        % exportgraphics(f, outFile_topo, 'ContentType', 'image', 'Resolution',300, 'Padding','tight');
+    end % for n_chans
+
+end %thisCondition
+
+%% ~~~~~~~~
+
+channels=1:23;
+for c=1:length(channels)
+    avg1=ga.individual(:,peakIdx,:);
+    se1=sqrt(2)*((nanstd(squeeze(ga.individual(:,peakIdx,:)),[],1))./sqrt(GA1a.dof(channels(c),:)));
+    M0a(c,:)=GA0a.avg(channels(c),:);
+    SE0a(c,:)=sqrt(2)*((nanstd(squeeze(data_allc1.avg0c(:,channels(c),:)),[],1))./sqrt(GA1a.dof(channels(c),:)));
+end
+
+figure;
+for c=1:length(channels)
+    subplot(5,5,c)
+    shadedErrorBar(GA1a.time,M1a(c,:),SE1a(c,:),{'color',[0.3906    0.5820    0.9258],'LineWidth',2},1)
+    hold on
+    shadedErrorBar(GA1a.time,M0a(c,:),SE0a(c,:),{'color',[1.0000    0.4961    0.3125],'LineWidth',2},1)
+end
+
+%~~~~~~~~
+cfg.highlight = 'on';
+cfg.highlightchannel = {'MEG0442+0443'};
+
+
+
+%% tmp test
+
+figure('Position', [200 0 1800 600])
+
+for m = 1:3
+    idx = m+(m-1)*ncols
+    subplot(nrows, ncols, idx);
+
+end
+
+%%
+function [mean_response, sem_response] = get_variance(grandavg, chan_idx)
+    data = squeeze(grandavg.individual(:, chan_idx, :));
+    mean_response = mean(data, 1);
+    sem_response  = std(data, 0, 1) ./ sqrt(size(data, 1));
+end
+
+
+function [ga1, ga2, ga3, ga4] = sel_ga(grand, modname, conditions, channel_sel)
+
+    ga1 = grand.(modname).(conditions{1});
+    ga2 = grand.(modname).(conditions{2});
+    ga3 = grand.(modname).(conditions{3});
+    ga4 = grand.(modname).(conditions{4});
+
+    cfg = [];
+    cfg.channel = channel_sel;
+    ga1 = ft_selectdata(cfg,ga1);
+    ga2 = ft_selectdata(cfg,ga2);
+    ga3 = ft_selectdata(cfg,ga3);
+    ga4 = ft_selectdata(cfg,ga4);
+
+end
+
+
+function [chans, peakIdxs] = get_peak_idx_n(ga, n_best, tlim)
+    % compute mean across subjects then find channels with highest peak value
+    t = ga.time;
+    tmin = find(t<=tlim(1),1,"last");
+    tmax = find(t>=tlim(2),1);
+    ga_avg = squeeze(mean(ga.individual, 1)); % channels x time
+    peakVals = max(abs(ga_avg), [], 2);      % peak magnitude per channel
+    [~, sortedIdx] = sort(peakVals, 'descend');
+    peakIdxs = sortedIdx(1:n_best);
+    chans = ga.label(peakIdxs);
+end
