@@ -19,7 +19,7 @@ Script for more plotting: /home/reabt/experiments/ncc/MRI/code/tools/plot_MEG_ev
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
 from utils.subj import get_MEG_subjects
 from utils.load_cfg import load_config_instance

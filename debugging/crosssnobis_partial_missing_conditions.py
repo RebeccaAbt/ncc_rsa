@@ -3,7 +3,7 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
 from copy import deepcopy
 from utils.load_cfg import load_config_instance
@@ -27,7 +27,7 @@ evaluate_models_searchlight
 )
 
 from plus_slurm import Job
-from configs.config import BaseConfig as cfg
+from configs.config2 import BaseConfig as cfg
 import importlib
 import configs.config as config
 importlib.reload(config)

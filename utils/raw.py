@@ -6,7 +6,7 @@ and specifies corresponding triggers
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
 sys.path.append(FABI_DIR)
 
@@ -83,13 +83,19 @@ def _apply_filters(raw, h_pass, l_pass, notch):
 	
 	return raw
 
-def _apply_maxwell(raw_tmp, subject_id, mean_d_idx):
+def _apply_maxwell(raw_tmp, subject_id, mean_d_idx=None):
 
 	#cal & cross talk files specific to system
 	calibration_file =f'{FABI_DIR}/utils/sss_cal.dat'
 	cross_talk_file = f'{FABI_DIR}/utils/ct_sparse.fif'
 	#+1 needed as blocks are indexed starting by 1 as destin_file = f'{FABI_DIR}/utils/ct_sparse.fif'ation for maxfilter
-	destination = Raw.get_fif_filename(subject_id=subject_id, run_nr=mean_d_idx+1)
+	if mean_d_idx:
+		destination = Raw.get_fif_filename(subject_id=subject_id, run_nr=mean_d_idx+1) # <------------------- This is used, when we use the mean head position (within each subject) as destination
+		print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \n using SUBJ BLOCK MEAN HEAD POSITION \n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \n")
+	else:
+		destination = (0., 0., 0.04)
+		print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \n using ELEKTA STANDARD HEAD POSITION \n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \n")
+
 	print(f"maxfilter destination: {destination}")  
 
 	#find bad channels first
@@ -132,12 +138,15 @@ class Raw(RawTemplate):
 					ica_method = "picard",
 					fit_params = None,
 					ica_threshold = 0.5,
+					train_thresh = 2,
+					train_freq = 16.7,
 					n_components = 50,
 					notch = True,
 					downsample_f=None,
 					l_pass = 99,
 					h_pass = 0.5,
-					overwrite = True):
+					overwrite = True, 
+					use_mean_headpos = False):
 		'''
 		Run only part of the cleaer: get ICA compoents, save them but don't apply them. 
 		Goal: Check all components, then add missing components manually to the list and then apply ICA in a second step. 
@@ -152,7 +161,6 @@ class Raw(RawTemplate):
 			raw = mne.io.read_raw(ica_outFiles['file_raw'], preload=True)
 
 		else:
-
 			if subject_id == '19970520smsr':
 				print(f"Using the adapted pipeline for subject '19970520smsr' because the behavioral data is missing for one block:", flush=True)
 				n_blocks = 11
@@ -160,21 +168,23 @@ class Raw(RawTemplate):
 			else:
 				n_blocks = Raw.get_number_of_runs(subject_id)
 				block_indices = np.arange(1, n_blocks + 1)
-				
+			print('block_indices:', block_indices, flush=True)
 			#get average head pos
 			block_pos_l = []
 
-			# for block in np.arange(1, n_blocks + 1):
-			for block in block_indices:
-				raw = Raw(subject_id, block_nr=block, preload=False)
+			if use_mean_headpos:
+				for block in block_indices:
+					raw = Raw(subject_id, block_nr=block, preload=False)
 
-				block_pos_l.append(raw.info["dev_head_t"]['trans'][:3, 3])
+					block_pos_l.append(raw.info["dev_head_t"]['trans'][:3, 3])
 
-			blocks_pos = np.array(block_pos_l)
-			print(f'Blocks positions: {blocks_pos}', flush=True)
-			all_distances = np.sqrt(blocks_pos[:,0]**2 + blocks_pos[:,1]**2 + blocks_pos[:,2]**2)
-			mean_distance = np.median(all_distances)
-			mean_d_idx = (np.abs(all_distances - mean_distance)).argmin()
+				blocks_pos = np.array(block_pos_l)
+				print(f'Blocks positions: {blocks_pos}', flush=True)
+				all_distances = np.sqrt(blocks_pos[:,0]**2 + blocks_pos[:,1]**2 + blocks_pos[:,2]**2)
+				mean_distance = np.median(all_distances)
+				mean_d_idx = (np.abs(all_distances - mean_distance)).argmin()
+			else:
+				mean_d_idx = None
 					
 			raw_all, first_samples = [], []
 
@@ -188,6 +198,7 @@ class Raw(RawTemplate):
 
 				# append and concatenate files
 				raw_all.append(raw_tmp) 
+				print('length of raw_all:', len(raw_all), flush=True)
 			raw = mne.concatenate_raws(raw_all, on_mismatch='warn')
 
 			if 'BIO003' in raw.ch_names: #sometimes this information is not correctly saved
@@ -205,11 +216,11 @@ class Raw(RawTemplate):
 			random_state=42,
 			ica_resample_freq=200,
 			ica_hp_freq=1.0,
-			ica_lp_freq=40.0,
+			ica_lp_freq=45.0,
 			eog_corr_thresh=ica_threshold,
 			ecg_corr_thresh=ica_threshold,
-			train_freq=16,
-			train_thresh=2.0,
+			train_freq=train_freq,
+			train_thresh=train_thresh,
 			surrogate_eog_chs=None,
 			overwrite=overwrite,
 		)
@@ -283,9 +294,14 @@ def _load_crop_maxfilter_filter_blocks(
 	notch=True,
 	l_pass=99,
 	h_pass=0.5,
+	use_mean_headpos = False
+
 ):
 	block_indices = _get_ncc_block_indices(subject_id)
-	mean_d_idx = _get_maxfilter_destination_idx(subject_id, block_indices)
+	if use_mean_headpos:
+		mean_d_idx = _get_maxfilter_destination_idx(subject_id, block_indices)
+	else:
+		mean_d_idx = None
 
 	raw_blocks = []
 
@@ -316,12 +332,15 @@ def run_cleaner_blockwise_ica_part1(
 	ica_method="picard",
 	fit_params=None,
 	ica_threshold=0.5,
+	train_thresh = 2,
+	train_freq = 16.7,
 	n_components=50,
 	notch=True,
 	downsample_f=None,
 	l_pass=99,
 	h_pass=0.5,
 	overwrite=True,
+	use_mean_headpos = False
 ):
 	print(f"---------------------------------------------\n now doing: Raw.run_cleaner_blockwise_ica_part1 \n---------------------------------------------", flush=True)
 
@@ -331,6 +350,7 @@ def run_cleaner_blockwise_ica_part1(
 		notch=notch,
 		l_pass=l_pass,
 		h_pass=h_pass,
+		use_mean_headpos = use_mean_headpos
 	)
 
 	if ica:
@@ -345,11 +365,11 @@ def run_cleaner_blockwise_ica_part1(
 			random_state=42,
 			ica_resample_freq=200,
 			ica_hp_freq=1.0,
-			ica_lp_freq=40.0,
+			ica_lp_freq=45.0,
 			eog_corr_thresh=ica_threshold,
 			ecg_corr_thresh=ica_threshold,
-			train_freq=16,
-			train_thresh=2.0,
+			train_freq=train_freq,
+			train_thresh=train_thresh,
 			surrogate_eog_chs=None,
 			overwrite=overwrite,
 		)

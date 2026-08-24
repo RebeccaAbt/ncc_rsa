@@ -6,7 +6,7 @@ for the full brain
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
 from plus_slurm import JobCluster
 from clusterjobs.do_SL_crossnobis_compileResults import SL_crossnobis_compileResults

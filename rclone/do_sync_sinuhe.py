@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(os.path.dirname('/home/scc_e_393956/ncc/rsa/'))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 import subprocess
 
 from plus_slurm import Job

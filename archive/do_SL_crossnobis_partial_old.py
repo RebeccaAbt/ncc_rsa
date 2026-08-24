@@ -35,7 +35,7 @@ from rsatoolbox.util.searchlight import (
 )
 
 from plus_slurm import Job
-from configs.config import BaseConfig as cfg
+from configs.config2 import BaseConfig as cfg
 import importlib
 import configs.config as config
 importlib.reload(config)

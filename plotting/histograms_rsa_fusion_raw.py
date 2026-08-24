@@ -5,7 +5,7 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
 from glob import glob
 import joblib
@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 from utils.load_cfg import load_fusion_config_instance
 from utils.fusion_stat import *
+from utils.subj import *
 
 #%%
 def find_common_centers(masks, maskFile='/home/reabt/experiments/ncc/MRI/data/sync/19910703eigl/NCC/firstLevel_sensory_M1C/mask.nii', show_plot=True):
@@ -107,6 +108,32 @@ def plot_panel(ax, values, title, use_mean=True):
 	ax.yaxis.set_major_formatter(PercentFormatter(1))
 	ax.axvline(x=0, color='g', linestyle='--', linewidth=1)
 	ax.set_title(title)
+
+
+def find_common_centers(masks, maskFile='/home/reabt/experiments/ncc/MRI/data/sync/19910703eigl/NCC/firstLevel_sensory_M1C/mask.nii', show_plot=True):
+	'''
+	masks: list of length n_subjects containing 3d boolean masks.
+	returns a mask that is True only for voxels that are True in ALL input masks.
+	'''
+	mask =  np.stack(masks,axis=0)
+	print(mask.shape)
+	mask = np.all(mask, axis=0) # shape should be (s1, s2, s3) again, but only True where all subjects had True
+
+	# mask =  np.stack([np.all(np.isfinite(t), axis=-1) for t in data], axis=0)
+
+	if show_plot:
+		plot_img = new_img_like(maskFile, mask)
+		fig = plt.figure(figsize=(12, 3))
+		display = plotting.plot_stat_map(
+					plot_img, 
+					display_mode='z', 
+					draw_cross=False, 
+					figure=fig,
+					# cmap='viridis',
+					black_bg=False, 
+					annotate=False)
+		plt.show()
+	return mask.astype(bool)
 #%% ======================================================================== plot fusion commonalir values
 
 
@@ -197,7 +224,6 @@ for config_class_name in [
 
 #%% ======================================================================== plot MRI RSA values
 
-
 all_subjects =get_MRI_subjects()
 
 for config_class_name in [
@@ -232,8 +258,8 @@ for config_class_name in [
 	fig.suptitle(config_class_name)
 	
 	for i, model in enumerate(allModels):
-		plot_panel(axs[0, i], data_full[model] , "sensory all subjects", use_mean=False)
-		plot_panel(axs[1, i], data_full[model] , "sensory subjects mean", use_mean=True)
+		plot_panel(axs[0, i], data_full[model] , f"{model} all subjects", use_mean=False)
+		plot_panel(axs[1, i], data_full[model] , f"{model} subjects mean", use_mean=True)
 	plt.show()
 
 

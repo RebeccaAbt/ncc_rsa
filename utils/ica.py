@@ -2,9 +2,9 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
-
+import re
 from almkanal.almkanal_steps.ica_utils import run_ica
 
 import matplotlib
@@ -51,10 +51,10 @@ def run_my_ica(
 	random_state=42,
 	ica_resample_freq=200,
 	ica_hp_freq=1.0,
-	ica_lp_freq=40.0,
+	ica_lp_freq=45.0,
 	eog_corr_thresh=0.5,
 	ecg_corr_thresh=0.5,
-	train_freq=16,
+	train_freq=16.7,
 	train_thresh=3.0,
 	surrogate_eog_chs=None,
 	overwrite=True,
@@ -65,7 +65,7 @@ def run_my_ica(
 	# Save the original raw object before ICA
 	raw.save(outFiles['file_raw'], overwrite=overwrite)
 
-	tmp_ica_raw = raw.copy().filter(l_freq = None, h_freq=40).resample(200, npad="auto")
+	tmp_ica_raw = raw.copy().filter(l_freq = ica_hp_freq, h_freq=ica_lp_freq).resample(200, npad="auto")
 	tmp_ica_raw.save(outFiles['file_icaData'], overwrite=overwrite)
 	del tmp_ica_raw
 
@@ -131,13 +131,15 @@ def run_my_ica(
 	with open(outFiles['file_metadata'], "w") as f:
 		json.dump(metadata, f, indent=4)
 
-	with open(outFiles['file_rejected'], "w") as f:
-		json.dump({
+	compFile_text = {
 		"automatic": components_dict,
-		"manual": {
-			"eog": [],
-			"ecg": [],
-			"train": [],},}, f, indent=4)
+		"manual": components_dict | {"other": [],}}
+
+	text = json.dumps(compFile_text, indent=4)
+	text = re.sub(r'\[\s*([\d,\s]+)\s*\]', lambda m: "[" + ", ".join(x.strip() for x in m.group(1).split(",")) + "]", text,) # Collapse lists containing only integers
+
+	with open(outFiles["file_rejected"], "w") as f:
+		f.write(text)
 
 
 	# Apply ICA to the original raw object
@@ -165,10 +167,10 @@ def run_my_ica_part1(
 	random_state=42,
 	ica_resample_freq=200,
 	ica_hp_freq=1.0,
-	ica_lp_freq=40.0,
+	ica_lp_freq=45.0,
 	eog_corr_thresh=0.5,
 	ecg_corr_thresh=0.5,
-	train_freq=16,
+	train_freq=16.7,
 	train_thresh=3.0,
 	surrogate_eog_chs=None,
 	overwrite=True,
@@ -188,13 +190,15 @@ def run_my_ica_part1(
 	# tmp_ica_raw = raw.copy().load_data().filter(l_freq = None, h_freq=40).resample(200, npad="auto")
 	tmp_ica_raw = raw.copy()
 	tmp_ica_raw.load_data()
-	tmp_ica_raw.filter(l_freq=None, h_freq=40)
+	tmp_ica_raw.filter(l_freq=ica_hp_freq, h_freq=ica_lp_freq)
 	tmp_ica_raw.resample(200, npad="auto")
 
 	print('----------------------------------------------\n saving tmp raw data for ICA fitting. \n---------------------------------------------', flush=True)
 	tmp_ica_raw.load_data().save(outFiles['file_icaData'], overwrite=True)
 	print('----------------------------------------------\n deleting tmp raw data for ICA fitting. \n---------------------------------------------', flush=True)
 	del tmp_ica_raw
+
+	print(f'\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \n train_thresh: {train_thresh} \n train_freq: {train_freq} \n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \n\n')
 	
 	# 3 + 4) Fit ICA and detect EOG/ECG/train components using AlmKanal logic.
 	# fit_only=True prevents run_ica from applying automatically.
@@ -218,7 +222,9 @@ def run_my_ica_part1(
 		train_freq=train_freq,
 		train_thresh=train_thresh,
 	)
-
+	print('components dict:', components_dict)
+	print('eog_scores:', eog_scores)
+	print('ecg_scores:', ecg_scores)
 	components_dict = {
 		key: _as_unique_int_list(vals)
 		for key, vals in components_dict.items()
@@ -265,14 +271,17 @@ def run_my_ica_part1(
 	with open(outFiles['file_metadata'], "w") as f:
 		json.dump(metadata, f, indent=4)
 
-	with open(outFiles['file_rejected'], "w") as f:
-		json.dump({
-		"automatic": components_dict,
-		"manual": {
-			"eog": [],
-			"ecg": [],
-			"train": [],},}, f, indent=4)
 
+	compFile_text = {
+		"automatic": components_dict,
+		"manual": components_dict | {"other": [],}}
+
+	text = json.dumps(compFile_text, indent=4)
+	text = re.sub(r'\[\s*([\d,\s]+)\s*\]', lambda m: "[" + ", ".join(x.strip() for x in m.group(1).split(",")) + "]", text,)	# Collapse lists containing only integers
+
+	with open(outFiles["file_rejected"], "w") as f:
+		f.write(text)
+		
 	return raw, ica, components_dict#, rejected_components
 
 
@@ -436,10 +445,10 @@ def run_my_blockwise_ica_part1(
 	random_state=42,
 	ica_resample_freq=200,
 	ica_hp_freq=1.0,
-	ica_lp_freq=40.0,
+	ica_lp_freq=45.0,
 	eog_corr_thresh=0.5,
 	ecg_corr_thresh=0.5,
-	train_freq=16,
+	train_freq=16.7,
 	train_thresh=2.0,
 	surrogate_eog_chs=None,
 	overwrite=True,
@@ -450,7 +459,7 @@ def run_my_blockwise_ica_part1(
 		block_indices=block_indices,
 	)
 
-	rejected_json = _load_or_create_blockwise_json(
+	compFile_text = _load_or_create_blockwise_json(
 		outFiles["file_rejected"],
 		block_indices,
 	)
@@ -484,7 +493,7 @@ def run_my_blockwise_ica_part1(
 		raw.save(block_files["file_raw"], overwrite=overwrite)
 
 		tmp_ica_raw = raw.copy().load_data()
-		tmp_ica_raw.filter(l_freq=None, h_freq=40)
+		tmp_ica_raw.filter(l_freq=ica_hp_freq, h_freq=ica_lp_freq)
 		tmp_ica_raw.resample(ica_resample_freq, npad="auto")
 		tmp_ica_raw.save(block_files["file_icaData"], overwrite=overwrite)
 		del tmp_ica_raw
@@ -524,18 +533,25 @@ def run_my_blockwise_ica_part1(
 		topo_fig.savefig(block_files["file_topos"], dpi=500)
 		plt.close(topo_fig)
 
-		rejected_json[key]["automatic"] = {
+		compFile_text[key]["automatic"] = {
 			"eog": components_dict.get("eog", []),
 			"ecg": components_dict.get("ecg", []),
 			"train": components_dict.get("train", []),
 		}
 
-		if "manual" not in rejected_json[key]:
-			rejected_json[key]["manual"] = {
-				"eog": [],
-				"ecg": [],
-				"train": [],
-			}
+		compFile_text[key]["manual"] = {
+			"eog": components_dict.get("eog", []),
+			"ecg": components_dict.get("ecg", []),
+			"train": components_dict.get("train", []),
+		}
+
+
+		# if "manual" not in compFile_text[key]:
+		# 	compFile_text[key]["manual"] = {
+		# 		"eog": [],
+		# 		"ecg": [],
+		# 		"train": [],
+		# 	}
 
 		metadata["blocks"][key] = {
 			"block": int(block),
@@ -543,12 +559,18 @@ def run_my_blockwise_ica_part1(
 			"file_ica": str(block_files["file_ica"]),
 			"file_icaData": str(block_files["file_icaData"]),
 			"file_topos": str(block_files["file_topos"]),
-			"automatic_components": rejected_json[key]["automatic"],
+			"automatic_components": compFile_text[key]["automatic"],
 			"automatic_rejected_components": automatic_rejected,
 		}
 
 	with open(outFiles["file_rejected"], "w") as f:
-		json.dump(rejected_json, f, indent=4)
+		json.dump(compFile_text, f, indent=4)
+
+	text = json.dumps(compFile_text, indent=4)
+	text = re.sub(r'\[\s*([\d,\s]+)\s*\]', lambda m: "[" + ", ".join(x.strip() for x in m.group(1).split(",")) + "]", text,) # Collapse lists containing only integers
+
+	with open(outFiles["file_rejected"], "w") as f:
+		f.write(text)
 
 	with open(outFiles["file_metadata"], "w") as f:
 		json.dump(metadata, f, indent=4)
@@ -571,7 +593,7 @@ def run_my_blockwise_ica_part2(
 	)
 
 	with open(outFiles["file_rejected"], "r") as f:
-		rejected_json = json.load(f)
+		compFile_text = json.load(f)
 
 	clean_blocks = []
 
@@ -590,7 +612,7 @@ def run_my_blockwise_ica_part2(
 			"train": [],
 		}
 
-		block_dict = rejected_json[key]
+		block_dict = compFile_text[key]
 
 		rejected_components = []
 

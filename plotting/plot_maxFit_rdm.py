@@ -21,11 +21,11 @@ from rsatoolbox.util.searchlight import (
 	evaluate_models_searchlight
 )
 
-from configs.config import BaseConfig as cfg
+from configs.config2 import BaseConfig as cfg
 import importlib
 import configs.config as config
 importlib.reload(config)
-from configs.config import BaseConfig as cfg
+from configs.config2 import BaseConfig as cfg
 import matplotlib
 %matplotlib inline
 

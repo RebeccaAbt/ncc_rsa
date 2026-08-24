@@ -3,7 +3,7 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from configs.config import * # directories + constants
+from configs.config2 import * # directories + constants
 
 sys.path.append('/home/reabt/experiments/ncc/MEG/Fabi/utils/')
 sys.path.append('/home/reabt/experiments/ncc/MEG/Fabi/')
@@ -55,7 +55,10 @@ class SaveEpochs(Job):
 		 	ica_settings = {'ica_method': "picard",
 							'fit_params': None,
 							'ica_threshold': 0.35,
-							'n_components': 50},
+							'n_components': 50, 
+							'train_thresh': 2,
+							'train_freq': 16.7},
+			use_mean_headpos = False
 			):
 		
 		l_freq = epochs_settings.pop('l_freq')
@@ -88,7 +91,8 @@ class SaveEpochs(Job):
 									   ica_out_root = ica_out_root,
 									   **ica_settings,
 									   **preproc_settings,
-									   overwrite = overwrite
+									   overwrite = overwrite,
+									   use_mean_headpos = use_mean_headpos
 									   )
 		elif run_part == 1:
 			print(f"---------------------------------------------\n Now doing: ICA PART 1 \n---------------------------------------------", flush=True)
@@ -100,6 +104,7 @@ class SaveEpochs(Job):
 					**ica_settings,
 					**preproc_settings,
 					overwrite=overwrite,
+					use_mean_headpos = use_mean_headpos
 				)
 			else:
 				data_raw = Raw.run_cleaner_ica_part1(subjectID,
@@ -107,7 +112,8 @@ class SaveEpochs(Job):
 										   ica_out_root = ica_out_root,
 										   **ica_settings, 
 										   **preproc_settings,
-										   overwrite = overwrite
+										   overwrite = overwrite,
+										   use_mean_headpos = use_mean_headpos
 										   )
 		elif run_part == 2:
 			print(f"---------------------------------------------\n Now doing: ICA PART 2 \n---------------------------------------------", flush=True)
