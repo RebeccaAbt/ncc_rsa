@@ -42,10 +42,10 @@ class MEGconfig_Base:
         # self.rsaFolder = 'rsa/M1B_wrongOutroTime' # to access the results computed with the wrong Outro Screen timing
 
         self.dataDir = MEG_DATA_DIR
-        self.dataFolder = 'epochs_clean/manual_finish'
+        self.dataFolder = 'epochs_clean2/manual_finish'
         # self.filePattern = '*_clean-epo.fif'
         # self.filePattern = '*_maxfilter_ica_1-99Hz__fs_1000__\[-1.5_1.5\]s_detrend_1_meg_clean-epo.fif'
-        self.filePattern = '*_maxfilter_ica_1-99Hz__fs_1000*-1.5_1.5*s_detrend_1_meg_clean-epo.fif'
+        self.filePattern = '*_maxfilter_True__ica_True__0.5-40Hz__fs_1000*-1.5_1.5*s_detrend_None_clean_meg-epo.fif'
 
         self.cv_descriptor = None
 
@@ -121,6 +121,15 @@ class MEGconfig_Base:
 # -------------------------------------------------------------------- euclidean
 
 class MEGconfig_E(MEGconfig_Base):
+    def __init__(self, subjectID='not_defined'):
+        super().__init__(subjectID)
+        # self.prefix = '' # End prefix with "-" if set to a string
+        self.RDMmethod = 'euclidean'
+        self.RSAmethod = 'spearman'
+        self.cv_descriptor = None
+        self.configure_paths()
+
+class MEGconfig_test(MEGconfig_Base):
     def __init__(self, subjectID='not_defined'):
         super().__init__(subjectID)
         # self.prefix = '' # End prefix with "-" if set to a string

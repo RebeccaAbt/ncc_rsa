@@ -2,7 +2,6 @@
 
 import os
 import sys
-import json
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from configs.config2 import * # directories + constants
 
@@ -18,7 +17,6 @@ import numpy as np
 from utils.raw import Raw
 from utils.epochs import  get_epochs_R
 from utils.ica import get_outFilePaths, get_blockwise_outFilePaths
-from utils.provenance import configure_subject_logging, flatten_integer_values, record_artifact
 from pymatreader import read_mat
 import neurokit2 as nk
 import mne
@@ -29,19 +27,6 @@ import mne
 class SaveEpochs(Job):
 	
 	job_data_folder = 'epochs_icaTest'
-
-	def _load_rejected_components(self, rejection_file):
-		with open(rejection_file, encoding='utf-8') as file:
-			return sorted(set(flatten_integer_values(json.load(file))))
-
-	def _load_blockwise_rejected_components(self, rejection_file):
-		with open(rejection_file, encoding='utf-8') as file:
-			rejection_data = json.load(file)
-
-		return {
-			block: sorted(set(flatten_integer_values(block_data)))
-			for block, block_data in rejection_data.items()
-		}
 
 	#%% the run method starts here
 	def run(self, 
@@ -77,10 +62,9 @@ class SaveEpochs(Job):
 							'train_freq': 16.7},
 			use_mean_headpos = False
 			):
-		epoching_options = dict(epochs_settings)
-		preprocessing_options = dict(preproc_settings)
+		
+		# l_freq = epochs_settings.pop('l_freq')
 
-		ica_options = dict(ica_settings)
 		h_freq = epochs_settings.pop('h_freq')
 		fs 	   = epochs_settings.pop('fs')
 		_, ica_outFiles = get_outFilePaths(subjectID, ica_out_root)
@@ -93,6 +77,7 @@ class SaveEpochs(Job):
 		subjIcaDir = os.path.join(epochsDir, 'ica', subjectID)
 		os.makedirs(subjIcaDir, exist_ok=True)
 
+		suffix =  f'maxfilter_{preproc_settings['maxfilter']}__ica_{ica}__{preproc_settings['h_pass']}-{h_freq}Hz__fs_{fs}__[{epochs_settings['tmin']}_{epochs_settings['tmax']}]s_detrend_{epochs_settings['detrend']}'# _meg-epo.dat'
 
 		# if os.path.isfile(meg_outfile) and not overwrite:
 		# 	print(f"Epochs file already exists for {subject_id} with settings: {suffix}. Skipping computation.")
@@ -104,7 +89,17 @@ class SaveEpochs(Job):
 		subject_id_short = subjectID[8:]
 		event_info = read_mat(f'{MEG_DATA_DIR}/behav/{subject_id_short}.mat')['data']
 
-		if run_part == 1:
+		if run_part == 0:
+			print(f"---------------------------------------------\n Now doing: FULL PREPROCESSING \n---------------------------------------------", flush=True)
+			data_raw = Raw.run_cleaner_new(subjectID,
+									   ica=ica,
+									   ica_out_root = ica_out_root,
+									   **ica_settings,
+									   **preproc_settings,
+									   overwrite = overwrite,
+									   use_mean_headpos = use_mean_headpos
+									   )
+		elif run_part == 1:
 			print(f"---------------------------------------------\n Now doing: ICA PART 1 \n---------------------------------------------", flush=True)
 			if blockwise_ica:
 				data_raw = Raw.run_cleaner_blockwise_ica_part1(
@@ -187,20 +182,18 @@ class SaveEpochs(Job):
 			meg_raw = data_raw.pick(['meg', 'stim']) 
 			
 			if h_freq:
-				meg_filter_options = {
-					    "l_freq": None,
-					    "h_freq": h_freq,
-					    "picks": "meg",
-					    "method": "fir",
-					    "fir_design": "firwin",
-					    "fir_window": "hamming",
-					    "l_trans_bandwidth": "auto",
-					    "h_trans_bandwidth": "auto",
-					    "phase": "zero",
-					    "n_jobs": -1,
-					}
-				
-				meg_raw.filter(**meg_filter_options)
+				meg_raw.filter(
+						l_freq=None,
+						h_freq=h_freq,
+						picks="meg",
+						method="fir",
+						fir_design="firwin",
+						fir_window="hamming",
+						l_trans_bandwidth='auto',
+						h_trans_bandwidth='auto',
+						phase="zero",
+						n_jobs=-1,
+					)
 
 			if fs != 1000:
 				meg_raw.resample(fs)	
@@ -208,75 +201,11 @@ class SaveEpochs(Job):
 								
 			epochs_meg, events = get_epochs_R(meg_raw, event_info, epochs_settings)
 			# epochsFile = f'{MEG_DATA_DIR}/{job_data_folder}/{subjectID}/{subjectID}_{suffix}_meg-epo.fif'
-			# suffix =  f'maxfilter_{preproc_settings['maxfilter']}__ica_{ica}__{preproc_settings['h_pass']}-{h_freq}Hz__fs_{fs}__[{epochs_settings['tmin']}_{epochs_settings['tmax']}]s_detrend_{epochs_settings['detrend']}'# _meg-epo.dat'
-			
-			suffix = (
-				f'maxfilter_{preproc_settings['maxfilter']}__ica_{ica}__' +
-				f'{epochs_meg.info['highpass']}-{int(epochs_meg.info['lowpass'])}Hz__' +
-				f'fs_{epochs_meg.info['sfreq']}__' +
-				f'[{epochs_settings['tmin']}_{epochs_settings['tmax']}]s_' +
-				f'detrend_{epochs_settings['detrend']}'
-					)# _meg-epo.dat'
-			
 			epochsFile = os.path.join(subjIcaDir,f'{subjectID}_{suffix}_meg-epo.fif')
-
-			# ~~~ Loggin stuff
-			if blockwise_ica:
-				rejection_file = str(ica_outFiles_blockwise['file_rejected'])
-				ica_log = os.path.splitext(str(ica_outFiles_blockwise['file_metadata']))[0] + '.log'
-				clean_raw_file = str(ica_outFiles_blockwise['file_raw_clean'])
-				rejected_components = self._load_blockwise_rejected_components(rejection_file)
-			else:
-				rejection_file = str(ica_outFiles['file_rejected'])
-				ica_log = os.path.splitext(str(ica_outFiles['file_ica']))[0] + '.log'
-				clean_raw_file = str(ica_outFiles['file_raw_clean'])
-				rejected_components = self._load_rejected_components(rejection_file)
-
-			logger, _ = configure_subject_logging(
-				epochsFile,
-				subjectID,
-				upstream_log=ica_log if os.path.isfile(ica_log) else None,
-			)
-			logger.info('Starting MEG epoching')
-			logger.info('ICA part 2 rejected components: %s', rejected_components)
-			logger.info('Processing before epoching: filter_hz=%s resample_hz=%s', h_freq, fs)
-			logger.info('Epoching options: %s', epoching_options)
-			# ~~~ Loggin stuff end
 
 			print(f'--------------------\n saving Epochs to {epochsFile}.... \n--------------------\n', flush=True)
 			epochs_meg.save(epochsFile, overwrite = True)
 			joblib.dump(events, os.path.join(epochsDir, 'ica', f'{subjectID}_events.pkl'))
-
-			# ~~~ Loggin stuff
-			record_artifact(
-				output_path=epochsFile,
-				operation_name='SaveEpochs.run MEG epoching',
-				parameters={
-					'subjectID': subjectID,
-					'run_part': run_part,
-					'blockwise_ica': blockwise_ica,
-					'ica': ica,
-					'preprocessing': {
-						'preprocessing_options': preprocessing_options,
-						'filtering_continuous':  meg_filter_options,
-						'epochs_info': {
-							'l_freq': epochs_meg.info['highpass'], 
-							'h_freq': epochs_meg.info['lowpass'], 
-							'fs': epochs_meg.info['sfreq']}
-					},
-					'ica_options': ica_options,
-					'ica_rejected_components': rejected_components,
-					'epoching_options': epoching_options,
-					'shape': list(epochs_meg.get_data(copy=False).shape),
-				},
-				input_paths=[
-					path for path in [clean_raw_file, rejection_file,
-						f'{MEG_DATA_DIR}/behav/{subject_id_short}.mat']
-					if os.path.exists(path)
-				],
-			)
-			logger.info('Wrote MEG epochs and provenance: %s', epochsFile)
-			# ~~~ Loggin stuff end
 
 			# doing bio epochs after meg epochs, because we need to remove the "detrend" that causes errors if applied to bio data only
 

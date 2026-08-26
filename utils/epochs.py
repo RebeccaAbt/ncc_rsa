@@ -128,6 +128,7 @@ def get_epochs(data_raw,
 I added the "sel_condition" argument, so we can choose which condition (Near threshold, High intensity or Catch) we want to select
 
 '''
+# ~~~ my version of getting epochs
 def get_epochs_R(data_raw, 
                event_info, 
                epochs_settings,

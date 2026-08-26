@@ -20,13 +20,13 @@ from plus_slurm import JobCluster
 
 
 all_subjects = _remove_bad_subj(os.listdir('/home/scc_e_393956/Desktop/reabt/ncc/MEG/epochs_clean_mean_head_pos/manual_finish'))
-
+# all_subjects = all_subjects[0:5]
 
 #%%
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 run_part = 2 # only first or second part of ICA
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-overwrite = False # needs to be Truew if we do the blockwise stuff, becaue there we cannot properly load the data with the existing pipeline
+overwrite = True # needs to be Truew if we do the blockwise stuff, becaue there we cannot properly load the data with the existing pipeline
 
 use_mean_headpos = False
 preproc_settings = {'maxfilter': True,
@@ -46,13 +46,13 @@ ica_settings = {'ica_method': "picard",
 		}
 
 epochs_settings={
-		 'tmin': -4,
-		 'tmax': 4,
+		 'tmin': -1.5,
+		 'tmax': 1.5,
 		 'baseline': None,
 		 'preload': True,
-		 'h_freq': 20,
+		 'h_freq': 40,
 		 'detrend': None,
-		 'fs': 100} # 0=constant, 1=linear, None=no detrending
+		 'fs': 1000} # 0=constant, 1=linear, None=no detrending
 
 # all_subjects = get_MEG_subjects()
 

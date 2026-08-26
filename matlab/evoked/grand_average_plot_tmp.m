@@ -62,7 +62,7 @@ else
     % channel_selection_l = {{'MEG2641'}, {'MEG2221'}, {'MEG2511'}};
 end
 %%
-bl = [-0.5 0];
+bl = [-0.2 0];
 
 % collect all subjects' evoked structs
 all_evoked = cell(numel(all_subjects),1);
@@ -244,9 +244,9 @@ for x = 1:length(xlims)
 
 end
 %% ======================================================================== multiplot
-% 
+%
 % figure('Name',strcat('multiplot', inFile_pattern), 'NumberTitle','off', 'Position',figsize);
-% 
+%
 % for m = 1:3
 %     modname = modalities{m};
 %     ga3 = grand.(modname).(conditions{3});
@@ -258,10 +258,10 @@ end
 %     % cfg.xlim = [0.5];
 %     cfg.channel = channel_sel;
 %     cfg.layout =  layout_sel;
-% 
+%
 %     cfg.figure = ax; %figure('Name',strcat('multiplot', inFile_pattern,'_', modname), 'NumberTitle','off', 'Position',[1 1 1900 1000]);
 %     out_cfg(m) = ft_multiplotER(cfg, ga3);
-% 
+%
 %     title(modname, 'Interpreter', 'none');
 % end
 
@@ -486,8 +486,6 @@ end
 
 %% ======================================================================== FINAL test plot: plot ERF and Plot Topos with marked channel next to it
 
-
-
 channel_sel = 'meggrad';
 % layout_sel = 'neuromag306cmb.lay';
 
@@ -582,7 +580,7 @@ for thisCondition = [1]
             hold off
 
         end
-  
+
         % saveas(f, outFile_evoked)
         % exportgraphics(f, outFile_evoked, 'ContentType', 'image', 'Resolution',300, 'Padding','tight');
         % ------------------------------- topos
@@ -640,7 +638,7 @@ for thisCondition = [1]
 
             end %for xlims
         end
-        % saveas(f, outFile_topo)
+        saveas(f, outFile_topo)
         % exportgraphics(f, outFile_topo, 'ContentType', 'image', 'Resolution',300, 'Padding','tight');
     end % for n_chans
 
@@ -679,6 +677,66 @@ for m = 1:3
     subplot(nrows, ncols, idx);
 
 end
+
+%% single subject ERF plots
+
+% clear chan_with_max_peak peakIdx
+
+channel_sel = 'meggrad';
+layout_sel = 'neuromag306cmb.lay';
+tlim = [0,1];
+close all
+
+thisCondition = 1;
+
+for n_best = [1 5 10]
+
+    for m = 1:3 % get best channels first so we se the same for all subjects
+
+        modname = modalities{m};
+        figTitle = strcat('long_', string(n_best), 'best_', modname);
+        figFile = fullfile(outDir_plots, strcat(figTitle, '.png'));
+        f = figure('Name',figTitle, 'NumberTitle','off', 'Position', get(0, 'ScreenSize'));
+
+        [ga1, ga2, ga3, ga4] = sel_ga(grand, modname, conditions, channel_sel);
+
+        eval(sprintf('[chan_with_max_peak{m}, peakIdx{m}]  = get_peak_idx_n(ga%d, n_best, tlim)', thisCondition));
+        for s = 1:length(all_subjects)
+            ax = subplot(6, 6, s);
+            hold on
+            sub = all_subjects{s};
+            ev = all_evoked{s};
+
+            for k = 1:4
+                data_subj = ev.(modname).(conditions{k});
+                cfg = [];
+                cfg.channel = channel_sel;
+                data_subj = ft_selectdata(cfg,data_subj);
+
+                ga = eval(sprintf('ga%d',k)); % ga1..ga4
+                if n_best == 1
+                    data_ind = squeeze(data_subj.avg(peakIdx{m}, :)); % subjects x time
+                    shadedErrorBar(data_subj.time, data_ind, repmat(NaN, 1, length(data_subj.time)),...
+                        'plotAxes', ax, 'lineProps', {'Color', colors(k,:)},'transparent',1)
+                else
+                    data_ind = squeeze(data_subj.avg(peakIdx{m},:));
+                    shadedErrorBar(data_subj.time, data_ind, {@mean,@(x) std(x,0,1) / sqrt(size(x,1))}, ...
+                        'plotAxes', ax, 'lineProps', {'Color', colors(k,:)},'transparent',1)
+                end
+       
+            end % for k
+
+            title(sub, 'Interpreter', 'none');
+        end
+    axes = findall(f,'type','axes');
+    xlim(axes, [-4 4])
+    ylim(axes, [0 2e-11])
+
+    saveas(f, figFile)
+    end % end m
+
+end % for nbest
+
 
 %%
 function [mean_response, sem_response] = get_variance(grandavg, chan_idx)

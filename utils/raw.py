@@ -228,6 +228,14 @@ class Raw(RawTemplate):
 			train_thresh=train_thresh,
 			surrogate_eog_chs=None,
 			overwrite=overwrite,
+			pre_ica_processing={
+				'maxfilter': maxfilter,
+				'notch': notch,
+				'l_pass': l_pass,
+				'h_pass': h_pass,
+				'use_mean_headpos': use_mean_headpos,
+			},
+			blockwise=False,
 		)
 
 		return raw
@@ -253,8 +261,6 @@ class Raw(RawTemplate):
 
 #%% ============================================================ blockwise
 
-
-
 # ============================================================
 # Add this to utils/raw.py inside or near your Raw class
 # ============================================================
@@ -267,8 +273,15 @@ def _get_ncc_block_indices(subject_id):
 		)
 		return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]
 
-	n_blocks = Raw.get_number_of_runs(subject_id)
-	return list(np.arange(1, n_blocks + 1))
+	# n_blocks = Raw.get_number_of_runs(subject_id)
+	# return list(np.arange(1, n_blocks + 1))
+	else:
+		print("\n------------------------------------------------------------------------------------\n" + 
+		"Using hard-coded block info instead of 'Raw.get_number_of_runs(subject_id)' info, \n" + 
+		"because we don't have the sinuhe raw data available right now" +
+		"\n------------------------------------------------------------------------------------\n" )
+		return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+		
 
 
 def _get_maxfilter_destination_idx(subject_id, block_indices):
@@ -411,6 +424,14 @@ def run_cleaner_blockwise_ica_part1(
 			train_thresh=train_thresh,
 			surrogate_eog_chs=None,
 			overwrite=overwrite,
+			pre_ica_processing={
+				'maxfilter': maxfilter,
+				'notch': notch,
+				'l_pass': l_pass,
+				'h_pass': h_pass,
+				'use_mean_headpos': use_mean_headpos,
+			},
+			blockwise=True,
 		)
 
 	return raw_blocks

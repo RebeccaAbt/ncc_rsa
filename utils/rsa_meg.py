@@ -9,6 +9,7 @@ from collections.abc import Iterable
 import numpy as np
 from rsatoolbox.rdm.rdms import concat
 from rsatoolbox.rdm import calc_rdm, calc_rdm_unbalanced
+from utils.provenance import record_artifact
 
 def create_run_idx(modality_array):
 
@@ -71,6 +72,18 @@ def count_events_per_run(cfg, epochs):
 
 	joblib.dump({'event_counts': event_counts,
 				 'event_matched': event_matched}, event_count_file)
+     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ not sure if we should keep this here -- needs to be reviewed
+	record_artifact(
+		output_path=event_count_file,
+		operation_name="count_events_per_run",
+		parameters={
+			"subjectID": subjectID,
+			"event_id": event_id,
+			"n_events": int(len(epochs.events)),
+		},
+		input_paths=[cfg.MEG_inFile[0]],
+	)
+       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 # ------------------------------------------------------------------ v  added by me

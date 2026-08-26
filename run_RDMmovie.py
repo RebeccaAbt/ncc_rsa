@@ -11,11 +11,12 @@ from utils.subj import *
 
 #%%
 
-meg_config = ["MEGconfig_E", "MEGconfig_C"]
+# meg_config = ["MEGconfig_E", "MEGconfig_C"]
+meg_config = ["MEGconfig_test"]
 
 for thisConfig in meg_config:
 
-    all_subjects = get_MEG_subjects(thisConfig)
+    all_subjects = get_MEG_subjects(thisConfig)[0:1]
     job_kwargs = job_setup(ram='64G',
                            cpus=10,
                            time=1*60,

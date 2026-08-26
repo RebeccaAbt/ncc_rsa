@@ -26,6 +26,7 @@ from utils.load_cfg import load_config_instance
 from utils.plots import *
 from utils.rsa import *
 from utils.subj import *
+from utils.provenance import configure_subject_logging, record_artifact
 
 import joblib
 
@@ -53,6 +54,10 @@ for subj in all_subj:
 
     if os.path.exists(movieFile):
 
+        logger, _ = configure_subject_logging(resultsFile, subj)
+        logger.info('Starting MEG model evaluation; config=MEGconfig_E')
+        logger.info('Input RDM movie: %s', movieFile)
+
         print(f'     - input file: {os.path.split(movieFile)[1]}')
 
         rdm_movie = joblib.load(movieFile)
@@ -62,6 +67,19 @@ for subj in all_subj:
         print(f'     - output file: {os.path.split(resultsFile)[1]}')
 
         joblib.dump(results, resultsFile)
+        record_artifact(
+            output_path=resultsFile,
+            operation_name='MEG model evaluation',
+            parameters={
+                'subjectID': subj,
+                'config_class_name': 'MEGconfig_E',
+                'RDMmethod': cfg.RDMmethod,
+                'RSAmethod': cfg.RSAmethod,
+                'n_models': len(models),
+            },
+            input_paths=[movieFile, cfg.models_24_file],
+        )
+        logger.info('Wrote model evaluation and provenance manifest: %s', resultsFile)
 
     else:
         print(f"\nskipping subjects {subj} because we don't have the necessary input data\n")
@@ -88,6 +106,24 @@ mean_movie = deepcopy(rdm_movie)
 mean_movie.dissimilarities = mean_rdms # put the data back in necessary RDMs structure
 
 joblib.dump(mean_movie, cfg.get_outFile_names()['movie_mean'])
+mean_movie_file = cfg.get_outFile_names()['movie_mean']
+mean_movie_inputs = []
+for subject in all_subj:
+    cfg.subjectID = subject
+    subject_movie_file = cfg.get_outFile_names()['movie']
+    if os.path.exists(subject_movie_file):
+        mean_movie_inputs.append(subject_movie_file)
+
+record_artifact(
+    output_path=mean_movie_file,
+    operation_name='MEG subject-mean RDM movie',
+    parameters={
+        'config_class_name': 'MEGconfig_E',
+        'subjects': all_subj,
+        'n_subjects': len(all_RDMs),
+    },
+    input_paths=mean_movie_inputs,
+)
 
 # do model evaluation with averaged RDM movie
 mean_results = rsa.inference.eval_fixed(models, rdm_movie, method=cfg.RSAmethod)#method='corr_cov')

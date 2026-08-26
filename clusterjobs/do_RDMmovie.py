@@ -14,6 +14,7 @@ from plus_slurm import Job
 from utils.load_cfg import load_MEG_config_instance
 from utils.rsa import adjust_descriptors
 from utils.rsa_meg import create_run_idx, count_events_per_run, calc_rdm_movie_parallel
+from utils.provenance import configure_subject_logging, record_artifact
 
 #%% 
 
@@ -24,7 +25,6 @@ class RDMmovie(Job):
 			overwrite = True
 			):
 
-
 		print('\n[1] load config & set up paths for MEG --> this loads all the settings for the computations')
 
 		cfg = load_MEG_config_instance(config_class_name, subjectID) 
@@ -33,6 +33,9 @@ class RDMmovie(Job):
 
 		MEG_file = cfg.MEG_inFile[0]
 		fileName_movie = cfg.get_outFile_names()['movie']
+		logger, _ = configure_subject_logging(fileName_movie, subjectID)
+		logger.info("Starting RDM movie; config=%s", config_class_name)
+		logger.info("Input epochs file: %s", MEG_file)
 
 		if not overwrite and os.path.exists(fileName_movie):
 			print(f'\n--------------------------------------------\n Skipped subject, because file {fileName_movie} already existis!\n--------------------------------------------\n')    
@@ -53,7 +56,7 @@ class RDMmovie(Job):
 			epochs = mne.read_epochs(MEG_file, preload=True)['NT']
 
 		epochs.pick(cfg.channels)
-		epochs.filter(l_freq=cfg.l_freq, h_freq=cfg.h_freq, n_jobs=-1)
+		# epochs.filter(l_freq=cfg.l_freq, h_freq=cfg.h_freq, n_jobs=-1)
 		epochs.crop(tmin = cfg.t_min, tmax = cfg.t_max)
 		epochs.resample(sfreq = cfg.fs_new)
 		
@@ -134,7 +137,7 @@ class RDMmovie(Job):
 								)
 		
 		print('\n----------------------------------------------------\n',
-			  f'RDM descriptors before reordering: \n\t condition: {rdm_movie.pattern_descriptors['condition']}\n\t index: {rdm_movie.pattern_descriptors['index']}', 
+			  f"RDM descriptors before reordering: \n\t condition: {rdm_movie.pattern_descriptors['condition']}\n\t index: {rdm_movie.pattern_descriptors['index']}",
 			  '\n--------------------------------------------\n', flush=True)
 
 		rdm_movie.rdm_descriptors['time'] = data.time_descriptors['time']
@@ -146,5 +149,20 @@ class RDMmovie(Job):
 		os.makedirs(os.path.split(fileName_movie)[0], exist_ok=True)
 
 		joblib.dump(rdm_movie, fileName_movie)
+		record_artifact(
+			output_path=fileName_movie,
+			operation_name="RDMmovie.run",
+			parameters={
+				"subjectID": subjectID,
+				"config_class_name": config_class_name,
+				"overwrite": overwrite,
+				"config": vars(cfg),
+				"input_shape": [n_events, n_channels, n_times],
+				"n_conditions": len(np.unique(all_events)),
+				"n_searchlight_workers": -1,
+			},
+			input_paths=[MEG_file],
+		)
+		logger.info("Wrote RDM movie and provenance manifest: %s", fileName_movie)
 
 #%%

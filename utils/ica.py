@@ -13,6 +13,7 @@ import mne
 from pathlib import Path
 import json
 import matplotlib.pyplot as plt
+from utils.provenance import configure_subject_logging, record_artifact
 
 def get_outFilePaths(subject_id, out_root=ICA_DIR):
 	out_dir = Path(out_root)
@@ -60,12 +61,25 @@ def run_my_ica(
 	train_thresh=3.0,
 	surrogate_eog_chs=None,
 	overwrite=True,
+	pre_ica_processing=None,
+	blockwise=False,
 ):
 
 	out_dir, outFiles = get_outFilePaths(subject_id, out_root)
 
 	# Save the original raw object before ICA
 	raw.save(outFiles['file_raw'], overwrite=overwrite)
+	raw_logger, _ = configure_subject_logging(outFiles['file_raw'], subject_id)
+	raw_logger.info('ICA part 1 input preparation')
+	raw_logger.info('Blockwise ICA: %s', blockwise)
+	raw_logger.info('Pre-ICA processing: %s', pre_ica_processing or {})
+	record_artifact(
+		output_path=outFiles['file_raw'],
+		operation_name='run_my_ica pre-ICA output',
+		parameters={'subject_id': subject_id, 'blockwise': blockwise,
+					'pre_ica_processing': pre_ica_processing or {}},
+		input_paths=[],
+	)
 
 	tmp_ica_raw = raw.copy().filter(l_freq = ica_hp_freq, h_freq=ica_lp_freq).resample(200, npad="auto")
 	tmp_ica_raw.save(outFiles['file_icaData'], overwrite=overwrite)
@@ -143,6 +157,37 @@ def run_my_ica(
 	with open(outFiles["file_rejected"], "w") as f:
 		f.write(text)
 
+	logger, _ = configure_subject_logging(
+		outFiles['file_ica'], subject_id,
+		upstream_log=outFiles['file_raw'].with_suffix('.log'),
+	)
+	logger.info('ICA part 1: blockwise=%s', blockwise)
+	logger.info('ICA part 1 preprocessing: %s', pre_ica_processing or {})
+	logger.info('ICA thresholds: eog=%s ecg=%s train=%s train_freq=%s',
+				 eog_corr_thresh, ecg_corr_thresh, train_thresh, train_freq)
+	logger.info('Automatically rejected components: %s', rejected_components)
+	record_artifact(
+		output_path=outFiles['file_ica'],
+		operation_name='run_my_ica',
+		parameters={
+			'subject_id': subject_id,
+			'blockwise': blockwise,
+			'pre_ica_processing': pre_ica_processing or {},
+			'n_components': n_components,
+			'method': method,
+			'random_state': random_state,
+			'ica_resample_freq': ica_resample_freq,
+			'ica_hp_freq': ica_hp_freq,
+			'ica_lp_freq': ica_lp_freq,
+			'eog_corr_thresh': eog_corr_thresh,
+			'ecg_corr_thresh': ecg_corr_thresh,
+			'train_freq': train_freq,
+			'train_thresh': train_thresh,
+			'automatic_rejected_components': rejected_components,
+		},
+		input_paths=[str(outFiles['file_raw'])],
+	)
+
 
 	# Apply ICA to the original raw object
 	raw.info["description"] = (
@@ -178,6 +223,8 @@ def run_my_ica_part1(
 	train_thresh=3.0,
 	surrogate_eog_chs=None,
 	overwrite=True,
+	pre_ica_processing=None,
+	blockwise=False,
 ):
 	
 	out_dir, outFiles = get_outFilePaths(subject_id, out_root)
@@ -190,6 +237,17 @@ def run_my_ica_part1(
 
 	if not outFiles['file_raw'].exists():# or overwrite:
 		raw.save(outFiles['file_raw'], overwrite=overwrite)
+	raw_logger, _ = configure_subject_logging(outFiles['file_raw'], subject_id)
+	raw_logger.info('ICA part 1 input preparation')
+	raw_logger.info('Blockwise ICA: %s', blockwise)
+	raw_logger.info('Pre-ICA processing: %s', pre_ica_processing or {})
+	record_artifact(
+		output_path=outFiles['file_raw'],
+		operation_name='run_my_ica_part1 pre-ICA output',
+		parameters={'subject_id': subject_id, 'blockwise': blockwise,
+					'pre_ica_processing': pre_ica_processing or {}},
+		input_paths=[],
+	)
 
 	# tmp_ica_raw = raw.copy().load_data().filter(l_freq = None, h_freq=40).resample(200, npad="auto")
 	tmp_ica_raw = raw.copy()
@@ -285,6 +343,37 @@ def run_my_ica_part1(
 
 	with open(outFiles["file_rejected"], "w") as f:
 		f.write(text)
+
+	ica_logger, _ = configure_subject_logging(
+		outFiles['file_ica'], subject_id,
+		upstream_log=outFiles['file_raw'].with_suffix('.log'),
+	)
+	ica_logger.info('ICA part 1: blockwise=%s', blockwise)
+	ica_logger.info('ICA part 1 preprocessing: %s', pre_ica_processing or {})
+	ica_logger.info('ICA thresholds: eog=%s ecg=%s train=%s train_freq=%s',
+				 eog_corr_thresh, ecg_corr_thresh, train_thresh, train_freq)
+	ica_logger.info('Automatically rejected components: %s', rejected_components)
+	record_artifact(
+		output_path=outFiles['file_ica'],
+		operation_name='run_my_ica_part1',
+		parameters={
+			'subject_id': subject_id,
+			'blockwise': blockwise,
+			'pre_ica_processing': pre_ica_processing or {},
+			'n_components': n_components,
+			'method': method,
+			'random_state': random_state,
+			'ica_resample_freq': ica_resample_freq,
+			'ica_hp_freq': ica_hp_freq,
+			'ica_lp_freq': ica_lp_freq,
+			'eog_corr_thresh': eog_corr_thresh,
+			'ecg_corr_thresh': ecg_corr_thresh,
+			'train_freq': train_freq,
+			'train_thresh': train_thresh,
+			'automatic_rejected_components': rejected_components,
+		},
+		input_paths=[str(outFiles['file_raw'])],
+	)
 		
 	return raw, ica, components_dict#, rejected_components
 
@@ -330,10 +419,6 @@ def run_my_ica_part2(
 	return raw, ica, components_dict
 
 #%% =================================================================================== blockwise
-
-# ============================================================
-# Add this to utils/ica.py
-# ============================================================
 
 from pathlib import Path
 import json
@@ -458,6 +543,7 @@ def run_my_blockwise_ica_part1(
 	train_thresh=2.0,
 	surrogate_eog_chs=None,
 	overwrite=True,
+	pre_ica_processing=None,
 ):
 	_, outFiles = get_blockwise_outFilePaths(
 		subject_id=subject_id,
@@ -489,6 +575,18 @@ def run_my_blockwise_ica_part1(
 	for raw, block in zip(raw_blocks, block_indices):
 		key = _block_key(block)
 		block_files = outFiles["blocks"][key]
+		raw_logger, _ = configure_subject_logging(block_files['file_raw'], subject_id)
+		raw_logger.info('ICA part 1 input preparation for %s', key)
+		raw_logger.info('Blockwise ICA: True')
+		raw_logger.info('Pre-ICA processing: %s', pre_ica_processing or {})
+		if block_files['file_raw'].exists():
+			record_artifact(
+				output_path=block_files['file_raw'],
+				operation_name='run_my_blockwise_ica_part1 pre-ICA output',
+				parameters={'subject_id': subject_id, 'block': int(block),
+							'pre_ica_processing': pre_ica_processing or {}},
+				input_paths=[],
+			)
 
 		if block_files["file_ica"].exists() and not overwrite:
 			print(f"ICA already exists for {subject_id}, {key}. Skipping.", flush=True)
@@ -535,6 +633,32 @@ def run_my_blockwise_ica_part1(
 		ica.exclude = automatic_rejected
 
 		ica.save(block_files["file_ica"], overwrite=overwrite)
+		ica_logger, _ = configure_subject_logging(
+			block_files['file_ica'], subject_id,
+			upstream_log=block_files['file_raw'].with_suffix('.log'),
+		)
+		ica_logger.info('ICA part 1 settings for %s: n_components=%s method=%s random_state=%s', key, n_components, method, random_state)
+		ica_logger.info('ICA thresholds: eog=%s ecg=%s train=%s train_freq=%s', eog_corr_thresh, ecg_corr_thresh, train_thresh, train_freq)
+		ica_logger.info('Automatically rejected components: %s', automatic_rejected)
+		record_artifact(
+			output_path=block_files['file_ica'],
+			operation_name='run_my_blockwise_ica_part1',
+			parameters={
+				'subject_id': subject_id,
+				'block': int(block),
+				'blockwise': True,
+				'pre_ica_processing': pre_ica_processing or {},
+				'n_components': n_components,
+				'method': method,
+				'random_state': random_state,
+				'eog_corr_thresh': eog_corr_thresh,
+				'ecg_corr_thresh': ecg_corr_thresh,
+				'train_freq': train_freq,
+				'train_thresh': train_thresh,
+				'automatic_rejected_components': automatic_rejected,
+			},
+			input_paths=[str(block_files['file_raw'])],
+		)
 
 		topo_fig = ica.plot_components(nrows=12, ncols=5)
 		topo_fig.savefig(block_files["file_topos"], dpi=500)
@@ -601,6 +725,8 @@ def run_my_blockwise_ica_part2(
 
 	with open(outFiles["file_rejected"], "r") as f:
 		compFile_text = json.load(f)
+
+		
 
 	clean_blocks = []
 
