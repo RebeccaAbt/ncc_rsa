@@ -17,10 +17,10 @@ from utils.submit_jobs import auto_args, job_setup
 #%%
 
 # thisConfig = ['MRIconfig_C2'] #, 'MRIconfig_C5'] # go to the "/configs/config.py file" --> use one of the classes there or create a new subclass that contains all the settings for the analysis! 
-thisConfig = 'MRIconfig_C2'
+thisConfig = 'MRIconfig_C5test'
 
 all_subjects = get_MRI_subjects()
-
+# all_subjects = '19840930bigs'
 
 job_kwargs = job_setup(ram='16G',
                        cpus=1,

@@ -21,6 +21,7 @@ from rsatoolbox.util.searchlight import (
 )
 
 from plus_slurm import Job
+from utils.provenance import configure_subject_logging, record_artifact
 
 # %%
 
@@ -46,6 +47,10 @@ class SL_euclidean(Job):
         models = cfg.get_model_RDM()
 
         outFiles = cfg.get_outFile_names()
+        logger, _ = configure_subject_logging(outFiles['SL_rdms'], subjectID)
+        logger.info('Starting fMRI Euclidean searchlight')
+        logger.info('Configuration class: %s', config_class_name)
+        logger.info('Configuration values: %s', vars(cfg))
         # if os.path.isfile(outFiles['SL_rdms']):
         #     print(f'    - Output files already exist. Skipping computation for maskNr {maskNr}. \n But we temporally load the ')
         #     tmp_add_condition_rdm_descriptor(cfg) # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! THIS NEEDS TO BE REMOVED!!
@@ -121,5 +126,19 @@ class SL_euclidean(Job):
 
         joblib.dump(info, outFiles['info'])
         joblib.dump(SL_rdms, outFiles['SL_rdms'])
+        record_artifact(
+            output_path=outFiles['SL_rdms'],
+            operation_name='SL_euclidean.run',
+            parameters={
+                'config_class_name': config_class_name,
+                'config': vars(cfg),
+                'subjectID': subjectID,
+                'maskNr': maskNr,
+                'n_searchlights': int(len(centers)),
+                'n_conditions': int(len(conditions)),
+            },
+            input_paths=[cfg.get_mask_file(), os.path.join(CODE_DIR, 'resources', 'info.pkl')],
+        )
+        logger.info('Wrote fMRI Euclidean searchlights and provenance')
 
         save_RSA_outputs(cfg)

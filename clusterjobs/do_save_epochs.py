@@ -63,9 +63,10 @@ class SaveEpochs(Job):
 							 'tmax': 1.5,
 							 'baseline': None,
 							 'preload': True,
-							 'h_freq': None, 
-							 'detrend': 1,
-							 'fs': 1000}, # 0=constant, 1=linear, None=no detrending
+							 'h_freq': None, 	# not passed to mne.Epochs, but used on continuous data before	
+							 'detrend': 1,		# 0=constant, 1=linear, None=no detrending
+							 'fs': 1000			# not passed to mne.Epochs, but used on continuous data before		
+							 }, 
 
 		 	ica_settings = {'ica_method': "picard",
 							'fit_params': None,
@@ -202,7 +203,7 @@ class SaveEpochs(Job):
 				
 				meg_raw.filter(**meg_filter_options)
 
-			if fs != 1000:
+			if fs != meg_raw.info['sfreq']:
 				meg_raw.resample(fs)	
 
 								
@@ -213,7 +214,7 @@ class SaveEpochs(Job):
 			suffix = (
 				f'maxfilter_{preproc_settings['maxfilter']}__ica_{ica}__' +
 				f'{epochs_meg.info['highpass']}-{int(epochs_meg.info['lowpass'])}Hz__' +
-				f'fs_{epochs_meg.info['sfreq']}__' +
+				f'fs_{int(epochs_meg.info['sfreq'])}__' +
 				f'[{epochs_settings['tmin']}_{epochs_settings['tmax']}]s_' +
 				f'detrend_{epochs_settings['detrend']}'
 					)# _meg-epo.dat'

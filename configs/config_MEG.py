@@ -45,7 +45,7 @@ class MEGconfig_Base:
         self.dataFolder = 'epochs_clean2/manual_finish'
         # self.filePattern = '*_clean-epo.fif'
         # self.filePattern = '*_maxfilter_ica_1-99Hz__fs_1000__\[-1.5_1.5\]s_detrend_1_meg_clean-epo.fif'
-        self.filePattern = '*_maxfilter_True__ica_True__0.5-40Hz__fs_1000*-1.5_1.5*s_detrend_None_clean_meg-epo.fif'
+        self.filePattern = '*_maxfilter_True__ica_True__0.5-40Hz__fs_100*-1.5_1.5*s_detrend_None_clean_meg-epo.fif'
 
         self.cv_descriptor = None
 

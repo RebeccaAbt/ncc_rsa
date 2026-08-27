@@ -13,10 +13,12 @@ import nibabel as nib
 import matplotlib.colors as mcolors
 
 
-def plot_rdm(RDM):
-    
+def plot_rdm(RDM, kwargs = {}):
+    if isinstance(RDM, list):
+        [plot_rdm(rdm) for rdm in RDM]
+
     thisRDM = RDM.predict_rdm()
-    rsa.vis.show_rdm(thisRDM)
+    rsa.vis.show_rdm(thisRDM, **kwargs)
     plt.show(thisRDM)
 
 def plot_nifti(image, title = None):

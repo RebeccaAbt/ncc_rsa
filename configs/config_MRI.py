@@ -37,6 +37,7 @@ class MRIconfig_Base:
 		self.SLradius = 2
 		self.SLthr = 1
 		self.resultsPlot_thr = 90
+		self.replace_missing = 'imputation'
 
 		self.dataDir =  MRI_DATA_DIR
 		self.modelsDir = f'{CODE_DIR}/resources/'
@@ -295,7 +296,48 @@ class MRIconfig_C5(MRIconfig_Base):
 		self.configure_paths()
 
 
+class MRIconfig_C5full(MRIconfig_C5):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+		self.SLthr = 0.5
 
+class MRIconfig_C2full(MRIconfig_C2):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+		self.SLthr = 0.5
+
+
+class MRIconfig_C2_nan(MRIconfig_C2):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+		self.SLthr = 1
+		self.replace_missing = 'nan'
+
+class MRIconfig_C5_nan(MRIconfig_C5):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+		self.SLthr = 1
+		self.replace_missing = 'nan'
+
+
+class MRIconfig_C2full_nan(MRIconfig_C2):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+		self.SLthr = 0.5
+		self.replace_missing = 'nan'
+
+class MRIconfig_C5full_nan(MRIconfig_C5):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+		self.SLthr = 0.5
+		self.replace_missing = 'nan'
+
+
+#%% tmp
 class MRIconfig_C5test(MRIconfig_C5):
+	def __init__(self, subjectID='not_defined', maskNr=0):
+		super().__init__(subjectID, maskNr)
+
+class MRIconfig_C2test(MRIconfig_C2):
 	def __init__(self, subjectID='not_defined', maskNr=0):
 		super().__init__(subjectID, maskNr)

@@ -309,6 +309,7 @@ def get_searchlight_RDMs_crossnobis(spm,
 									info, 
 									events='condition_number',
 									method='crossnobis', 
+									replace_missing = 'imputation',
 									verbose=True):
 	
 	info_full = joblib.load(os.path.join(RESOURCE_DIR, 'info.pkl'))
@@ -347,7 +348,13 @@ def get_searchlight_RDMs_crossnobis(spm,
 				missing_condition_idx = info.index[info['condition'] == missing_condition].tolist() 
 				missing_condition_values = np.mean(SL_beta[missing_condition_idx], axis = 0)                 # 3) compute sum of betas at these indices
 
-				SL_beta = np.insert(SL_beta, missing_identifier_idx, missing_condition_values, axis = 0)    # 4) insert condition at right index to mathc full_info order            
+				if replace_missing == 'imputation':
+					print('Doing imputation!', flush = True)
+					SL_beta = np.insert(SL_beta, missing_identifier_idx, missing_condition_values, axis = 0)    # 4) insert condition at right index to matc full_info order            
+				elif replace_missing == 'nan':
+					print('Replacing missing conditions with NaNs!', flush = True)
+					SL_beta = np.insert(SL_beta, missing_identifier_idx, np.nan, axis = 0) 
+
 
 		# print(f'       - Loading Residuals...', flush=True)
 		SL_residuals, _, _ = spm.get_residuals(SL_mask_img)
@@ -379,7 +386,7 @@ def get_searchlight_RDMs_crossnobis(spm,
 		n_conds = len(np.unique(info_double['events']))
 		RDM = np.zeros((n_centers, n_conds * (n_conds - 1) // 2))
 		
-		for chunk in tqdm(chunked_center, desc='Calculating RDMs...', flush=True):
+		for chunk in tqdm(chunked_center, desc='Calculating RDMs...'):
 			center_data, center_noise = [], []
 			for c in chunk:
 
@@ -452,6 +459,7 @@ def get_searchlight_RDMs_crossnobis_parallel(spm,
 									info, 
 									events='condition_number',
 									method='crossnobis', 
+									replace_missing = 'imputation',
 									verbose=True):
 	
 	'''
@@ -503,11 +511,15 @@ def get_searchlight_RDMs_crossnobis_parallel(spm,
 		if conditions_missing: # if we have missing conditions
 			for id in which_conditions_missing:     
 				missing_identifier_idx = np.where(info_full['identifier'].values == id)[0].item()           # 1) index of identifier in full set of conditions
-				missing_condition = which_conditions_missing[0][:-5]                                        # 2) find indices/labels of condition in other runs of current data
+				missing_condition = which_conditions_missing[0][:-5]  # without the '_run1' suffix          # 2) find indices/labels of condition in other runs of current data
 				missing_condition_idx = info.index[info['condition'] == missing_condition].tolist() 
 				missing_condition_values = np.mean(SL_beta[missing_condition_idx], axis = 0)                 # 3) compute sum of betas at these indices =================> I HAD MISTAKE HERE; BECAUSE I USED "SUM" INSTEAD OF "MEAN" HERE BEFORE!!!
-
-				SL_beta = np.insert(SL_beta, missing_identifier_idx, missing_condition_values, axis = 0)    # 4) insert condition at right index to mathc full_info order            
+				if replace_missing == 'imputation':
+					print('Doing imputation!', flush = True)
+					SL_beta = np.insert(SL_beta, missing_identifier_idx, missing_condition_values, axis = 0)    # 4) insert condition at right index to matc full_info order            
+				elif replace_missing == 'nan':
+					print('Replacing missing conditions with NaNs!', flush = True)
+					SL_beta = np.insert(SL_beta, missing_identifier_idx, np.nan, axis = 0) 
 
 		# print(f'       - Loading Residuals...', flush=True)
 		SL_residuals, _, _ = spm.get_residuals(SL_mask_img)

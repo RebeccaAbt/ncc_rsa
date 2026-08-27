@@ -58,7 +58,7 @@ class RDMmovie(Job):
 		epochs.pick(cfg.channels)
 		# epochs.filter(l_freq=cfg.l_freq, h_freq=cfg.h_freq, n_jobs=-1)
 		epochs.crop(tmin = cfg.t_min, tmax = cfg.t_max)
-		epochs.resample(sfreq = cfg.fs_new)
+		# epochs.resample(sfreq = cfg.fs_new)
 		
 		count_events_per_run(cfg, epochs) # <-------------------------------------- This is new! Need to check if it works!
 

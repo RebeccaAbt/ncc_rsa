@@ -1,6 +1,7 @@
 
 import os
 import sys
+import numpy as np
 
 CODE_DIR	= os.path.dirname(os.path.dirname(__file__))
 FABI_DIR	= '/home/scc_e_393956/ncc/Fabi'
@@ -42,7 +43,14 @@ EXAMPLE_SUBJ_1 	= '19910823ssld'
 EXAMPLE_SUBJ_2 	= '19840930bigs'
 
 #models
-ALL_MODELS 		= ['sensory', 'suprasensory']
+ALL_MODELS 		= ['sensory', 'suprasensory', 'sensory2']
+
+descr_modality_vec = np.concatenate([['aud_']*8, ['tac_']*8, ['vis_']*8])
+descr_perc_vec = np.tile(np.concatenate([['hit']*4, ['miss']*4]), 3)
+descr_stim_vec = np.tile([('_1'), ('_2'), ('_3'), ('_4') ], 6)
+RDM_DESCRIPTOR = descr_modality_vec + descr_perc_vec + descr_stim_vec
+RDM_DESCRIPTOR = [str(s) for s in RDM_DESCRIPTOR]
+
 
 #functions
 def get_spm_dir(subj):

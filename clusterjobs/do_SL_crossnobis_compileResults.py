@@ -1,6 +1,7 @@
 #%%
 import os
 import sys
+import json
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from configs.config2 import * # directories + constants
 
@@ -24,6 +25,7 @@ from utils.compile import compile_SL_rdms_files, find_empty_masks
 from utils.plots import *
 from utils.rsa import *
 from plus_slurm import Job
+from utils.provenance import configure_subject_logging, record_artifact
 
 #%%
 
@@ -44,6 +46,7 @@ class SL_crossnobis_compileResults(Job):
 		cfg.configure_paths()
 		outFiles = cfg.get_outFile_names()
 		inDir = cfg.outDir
+		logger, _ = configure_subject_logging(outFiles['SL_rdms'], subjectID)
 
 		in_file = os.path.join(cfg.outDir, "empty_masks.txt")
 		with open(in_file) as f:
@@ -73,7 +76,23 @@ class SL_crossnobis_compileResults(Job):
 		# Match and sort by mask number
 		paired = sorted(zip(mask_numbers, SL_rdms_files))
 		paired = [(m, s) for m, s in paired if m is not None]
-		mask_numbers_sorted, SL_rdms_files_sorted = zip(*paired)
+		if paired:
+			mask_numbers_sorted, SL_rdms_files_sorted = zip(*paired)
+		else:
+			mask_numbers_sorted, SL_rdms_files_sorted = (), ()
+
+		partial_searchlights = {}
+		partial_config = None
+		for mask_number, partial_file in paired:
+			manifest_file = f'{partial_file}.provenance.json'
+			if os.path.isfile(manifest_file):
+				with open(manifest_file, encoding='utf-8') as file:
+					manifest = json.load(file)
+				partial_searchlights[mask_number] = manifest.get('parameters', {}).get('n_searchlights')
+				if partial_config is None:
+					partial_config = manifest.get('parameters', {}).get('config')
+			else:
+				partial_searchlights[mask_number] = None
 
 		# -------------------------------------------------
 		# Verify that every mask is accounted for
@@ -110,7 +129,24 @@ class SL_crossnobis_compileResults(Job):
 
 		# output from SL analysis before comparison with model RDMs (--> save outside of model loop)
 		joblib.dump(all_SL_rdms, outFiles['SL_rdms'])
-
 		save_RSA_outputs(cfg)
+
+		logger.info('Compiled fMRI crossnobis searchlights')
+		logger.info('Configuration class: %s', config_class_name)
+		logger.info('Configuration values from partial outputs: %s', partial_config or vars(cfg))
+		logger.info('Searchlights per partial mask: %s', partial_searchlights)
+		record_artifact(
+			output_path=outFiles['SL_rdms'],
+			operation_name='SL_crossnobis_compileResults.run',
+			parameters={
+				'config_class_name': config_class_name,
+				'config': partial_config or vars(cfg),
+				'subjectID': subjectID,
+				'partial_searchlights': partial_searchlights,
+				'empty_masks': sorted(empty_masks),
+				'n_partial_files': len(SL_rdms_files_sorted),
+			},
+			input_paths=list(SL_rdms_files_sorted) + [in_file],
+		)
 						 
 		print('[Done] ')

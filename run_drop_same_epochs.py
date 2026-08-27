@@ -18,7 +18,7 @@ all_subjects = [
 	if os.path.isdir(os.path.join(subj_list_dir, name))
 ]
 
-all_subjects = all_subjects[0:5]
+# all_subjects = all_subjects[0:5]
 job_kwargs = job_setup(ram='32G',
 					   cpus=4,
 					   time=1*60,
@@ -31,7 +31,7 @@ job_cluster = JobCluster(**job_kwargs)
 job_cluster.add_job(DropEpochsFromTxt,
 					subjectID = auto_args(all_subjects),
 					cleanDir = cleanDir,
-					epoSuffix = 'maxfilter_True__ica_True__0.5-40Hz__fs_1000__[-1.5_1.5]s_detrend_None', # 'maxfilter_True__ica_True__0.1-NoneHz__fs_1000__[-1.5_1.5]s_detrend_1_bio-epo.fif''#
+					epoSuffix = 'maxfilter_True__ica_True__0.5-40Hz__fs_100__[-1.5_1.5]s_detrend_None', # 'maxfilter_True__ica_True__0.1-NoneHz__fs_1000__[-1.5_1.5]s_detrend_1_bio-epo.fif''#
 					epoSuffix2 = '_meg-epo'
 
 					# oldSuffix = 'clean-epo',

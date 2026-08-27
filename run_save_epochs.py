@@ -50,7 +50,7 @@ epochs_settings={
 		 'tmax': 1.5,
 		 'baseline': None,
 		 'preload': True,
-		 'h_freq': 40,
+		 'h_freq': 20,
 		 'detrend': None,
 		 'fs': 1000} # 0=constant, 1=linear, None=no detrending
 

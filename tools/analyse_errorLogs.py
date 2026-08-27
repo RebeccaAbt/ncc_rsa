@@ -9,7 +9,7 @@ import subprocess
 from collections import defaultdict
 #%%
 jobsDir = os.path.join(JOBS_DIR, 'rsa_mri')
-jobID = '784818'
+jobID = '1861534'
 
 
 def find_job_folder(jobID, jobsDir):
