@@ -154,8 +154,8 @@ for config_class_name in [
 		print(f'\t\t\t number of valid voxels in mask: {np.sum(mask_1d)}')
 		print(f"\t\t\t number of subjects (length of 'all_data_pre'): {len(all_data_pre)}\n")
 
-		X_pre   = get_masked_data(all_data_pre, mask_1d) # we mask the data here, because the adjacency has onlly the same length as the number of True values inside the mask 
-		X_post  = get_masked_data(all_data_post, mask_1d)
+		X_pre   = data3d_to_masked1d(all_data_pre, mask_1d) # we mask the data here, because the adjacency has onlly the same length as the number of True values inside the mask 
+		X_post  = data3d_to_masked1d(all_data_post, mask_1d)
 		X_diff  = X_post - X_pre
 
 		

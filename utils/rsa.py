@@ -3,9 +3,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from configs.config2 import * # directories + constants
 
-import sys
 from copy import deepcopy
-
 import nibabel as nib
 import numpy as np
 import pandas as pd
@@ -70,6 +68,23 @@ def data4modelRDM():
 
 	return SensoryMat, ConsciousMat, RDM_descriptor
 
+def adust_edge_searchlights(mask, neighbors):
+	if isinstance(mask, str):
+		mask = nib.load(mask)
+	if isinstance(mask, nib.nifti1.Nifti1Image):
+		mask = mask.get_fdata()
+
+	mask_bool = mask > 0
+
+	mask_bool_1D_idx = np.where(mask_bool.flatten())[0] 
+
+	neighbors_new = []
+	for i, nb in enumerate(neighbors):
+
+		nb = nb[np.isin(nb, mask_bool_1D_idx)]
+		neighbors_new.append(nb) 
+
+	return neighbors_new
 
 def check_condition_missing_in_all_runs(info):
 	info_full = joblib.load(os.path.join(RESOURCE_DIR, 'info.pkl'))
@@ -327,6 +342,11 @@ def get_searchlight_RDMs_crossnobis(spm,
 	#initalize variables
 	n_centers = centers.shape[0]
 
+	if replace_missing == 'imputation':
+		print('Doing imputation!', flush = True)
+	elif replace_missing == 'nan':
+		print('Replacing missing conditions with NaNs!', flush = True)
+
 	def get_dataset(center, nb):
 
 		SL_mask_1D = np.zeros(n_voxels_total, dtype=bool)
@@ -349,12 +369,9 @@ def get_searchlight_RDMs_crossnobis(spm,
 				missing_condition_values = np.mean(SL_beta[missing_condition_idx], axis = 0)                 # 3) compute sum of betas at these indices
 
 				if replace_missing == 'imputation':
-					print('Doing imputation!', flush = True)
 					SL_beta = np.insert(SL_beta, missing_identifier_idx, missing_condition_values, axis = 0)    # 4) insert condition at right index to matc full_info order            
 				elif replace_missing == 'nan':
-					print('Replacing missing conditions with NaNs!', flush = True)
 					SL_beta = np.insert(SL_beta, missing_identifier_idx, np.nan, axis = 0) 
-
 
 		# print(f'       - Loading Residuals...', flush=True)
 		SL_residuals, _, _ = spm.get_residuals(SL_mask_img)
@@ -750,14 +767,14 @@ def save_RSA_outputs(cfg, modelNames = ALL_MODELS):
 		joblib.dump(SL_rdms, outFiles['SL_rdms'])
 		joblib.dump(eval_results, outFiles['eval_results'])
 
-		for model in modelNames:
+		for modelIdx, model in enumerate(modelNames):
 			# ------------------------ v 
 			cfg.modelType = model
 			cfg.configure_paths()
 			outFiles = cfg.get_outFile_names()
 			# ------------------------ ^ important! for right prefix of files (sensory/suprasensory)
 
-			eval_score = list(np.concatenate([e.evaluations[0][cfg.modelIdx] for e in eval_results]))
+			eval_score = list(np.concatenate([e.evaluations[0][modelIdx] for e in eval_results]))
 			RDM_brain = get_RDM_brain(mask, SL_rdms, eval_score) # to display eval scores of model comparison in brain-shape
 
 			joblib.dump(eval_score, outFiles['eval_score'])
@@ -799,19 +816,74 @@ def get_RSA_outputs(cfg, modelName = 'sensory'):
 
 	SL_rdms.pattern_descriptors['condition'] = conditions
 
-	print('    - Reordering RDMs and models...')
+	# print('    - Reordering RDMs and models...')
 	SL_rdms, models = reorder_rdms(SL_rdms, models)
 
-	print('    - Evaluating RDMs...')
+	# print('    - Evaluating RDMs...')
 
 	eval_results = evaluate_models_searchlight(SL_rdms, models, eval_fixed, method = cfg.RSAmethod, n_jobs=-1)
 
 	eval_score = [float(e.evaluations[0][0][0]) for e in eval_results]
 	RDM_brain = get_RDM_brain(mask, SL_rdms, eval_score)
 
-	return SL_rdms, models, eval_results, eval_results, eval_score, RDM_brain
+	return SL_rdms, models, eval_results, eval_score, RDM_brain
 
+def get_RSA_for_models(cfg, models, show_progress=True, n_jobs=-1):    
 
+	if cfg.maskNr == 0:
+		SL_rdms     = joblib.load(cfg.get_outFile_names()['SL_rdms'])
+	else:
+		SL_rdms     = joblib.load(cfg.get_outFile_names()['SL_rdms_partial'])
+	info        = joblib.load(cfg.get_outFile_names()['info'])
+	info_full   = joblib.load(os.path.join(RESOURCE_DIR, 'info.pkl'))
+
+	mask        = nib.load(cfg.get_mask_file())
+
+	conditions = deal_with_missing_conditions(info, info_full)
+
+	SL_rdms.pattern_descriptors['condition'] = conditions
+	SL_rdms, models = reorder_rdms(SL_rdms, models)
+
+	print('evaluating models')
+	if show_progress:
+		eval_results = evaluate_models_searchlight(SL_rdms, models, eval_fixed, method = cfg.RSAmethod, n_jobs=n_jobs)
+	else:
+		eval_results = evaluate_models_searchlight_noProgressBar(SL_rdms, models, eval_fixed, method = cfg.RSAmethod, n_jobs=n_jobs)
+	print(f'isinstance(models, list): {isinstance(models, list)}')
+	print(f'len(models)>1: {len(models)>1}')
+	if isinstance(models, list) and len(models)>1:
+		RDM_brain_list = []
+		print(len(models))
+		for k, mo in enumerate(models):
+			eval_score = [float(e.evaluations[0][k][0]) for e in eval_results]
+			RDM_brain_list.append(get_RDM_brain(mask, SL_rdms, eval_score))
+		return SL_rdms, eval_results, eval_score, RDM_brain_list
+	else:
+		eval_score = [float(e.evaluations[0][0][0]) for e in eval_results]
+		RDM_brain = get_RDM_brain(mask, SL_rdms, eval_score)
+
+		return SL_rdms, eval_results, eval_score, RDM_brain
+
+def data3d_to_masked1d(data, mask_1D):
+	'''
+	Docstring for get_masked_data
+	
+	:param data: list of length n_subj with arrays of shape (s1 x s2 x s3)
+	:param mask_1D: 1d format of original 3d spatial mask
+
+	NOTE: adapted this quickly from the 4d fusion stuff... 
+	we also could have just used the 3d mask for masking here, 
+	or added some logik to detect the input dimensions to make it more flexible...
+	'''
+	s_3D = data[0].shape
+	# print(f'\t\t\t  - shape of 3D data (s1 x s2 x s3): {s_3D}')
+	maskedData = []
+
+	for d in data:
+		subj_maskedData = d.flatten()
+		subj_maskedData = subj_maskedData[mask_1D] # single subject
+		maskedData.append(subj_maskedData) # all subjects
+	return np.stack([d for d in maskedData]) 
 
 
 def get_searchlight_RDMs_parallel(data_2d, centers, neighbors, events,
@@ -928,3 +1000,33 @@ def get_searchlight_RDMs_parallel(data_2d, centers, neighbors, events,
 				   dissimilarity_measure=method)
 
 	return SL_rdms
+
+
+
+def evaluate_models_searchlight_noProgressBar(sl_RDM, models, eval_function, method='corr', theta=None, n_jobs=1):
+    """ Copied from RSAtoolbox, but removed the tqdm part to (hopefully) speed everything up
+	evaluates each searchlighth with the given model/models
+
+    Args:
+
+        sl_RDM ([rsatoolbox.rdm.RDMs]): RDMs object
+        as computed by rsatoolbox.util.searchlight.get_searchlight_RDMs
+
+        models ([rsatoolbox.model]: models to evaluate - can also be list of models
+
+        eval_function (rsatoolbox.inference evaluation-function): [description]
+
+        method (str, optional): see rsatoolbox.rdm.compare for specifics. Defaults to 'corr'.
+
+        n_jobs (int, optional): how many jobs to run. Defaults to 1.
+
+    Returns:
+
+        list: list of with the model evaluation for each searchlight center
+    """
+
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(eval_function)(
+            models, x, method=method, theta=theta) for x in sl_RDM)
+
+    return results

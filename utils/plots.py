@@ -13,13 +13,20 @@ import nibabel as nib
 import matplotlib.colors as mcolors
 
 
-def plot_rdm(RDM, kwargs = {}):
-    if isinstance(RDM, list):
-        [plot_rdm(rdm) for rdm in RDM]
-
-    thisRDM = RDM.predict_rdm()
-    rsa.vis.show_rdm(thisRDM, **kwargs)
-    plt.show(thisRDM)
+def plot_rdm(rdms, kwargs = {}):
+	if isinstance(rdms, list):
+		if len(rdms) == 1:
+			rdms = rdms[0]
+		else:
+			for rdm in rdms:
+				plot_rdm(rdms=rdm, kwargs=kwargs)
+			return
+	if hasattr(rdms, 'predict_rdm'):
+		thisRDM = rdms.predict_rdm()
+	else:
+		thisRDM = rdms
+	rsa.vis.show_rdm(thisRDM, **kwargs)
+	plt.show()
 
 def plot_nifti(image, title = None):
     '''
@@ -64,24 +71,39 @@ def plot_overlay_on_mask(overlay, mask):
     plotting.show()
 
 
-def plot_RDMbrain(RDM_brain, eval_score, subjectID = EXAMPLE_SUBJ_1, percentile = 90):
+def plot_RDMbrain(RDM_brain, eval_score, subjectID = EXAMPLE_SUBJ_1, percentile = 90, kwargs = {}):
 
-    tmp_img = nib.load(f'{MRI_DATA_DIR}/{MRI_RAW_FOLDER}/{subjectID}/{MRI_1ST_LEVEL_FOLDER}/beta_0001.nii')
-    threshold = np.percentile(eval_score, percentile)
-    plot_img = new_img_like(tmp_img, RDM_brain)
+	tmp_img = nib.load(f'{MRI_DATA_DIR}/{MRI_RAW_FOLDER}/{subjectID}/{MRI_1ST_LEVEL_FOLDER}/beta_0001.nii')
+	threshold = np.percentile(eval_score, percentile)
+	plot_img = new_img_like(tmp_img, RDM_brain)
 
-    cmap = _RDMcolormapObject()
+	cmap = _RDMcolormapObject()
 
-    # coords = range(-20, 40, 5)
-    fig = plt.figure(figsize=(12, 3))
+	if 'annotate' not in kwargs:
+		kwargs['annotate'] = False
+	if 'display_mode' not in kwargs:
+		kwargs['display_mode'] = 'z'
+	if 'draw_cross' not in kwargs:
+		kwargs['draw_cross'] = False
+	if 'black_bg' not in kwargs:
+		kwargs['black_bg'] = False
+	if 'cmap' not in kwargs:
+		kwargs['cmap'] = cmap
+	if 'colorbar' not in kwargs:
+		kwargs['colorbar'] = True
+	if 'cut_coords' not in kwargs:
+		kwargs['cut_coords'] = list(range(-25, 35, 5))
 
-    display = plotting.plot_stat_map(
-            plot_img, colorbar=True, threshold=threshold,
-            display_mode='z', draw_cross=False, figure=fig,
-            title=f'suprasensory', cmap=cmap,
-            black_bg=False, annotate=False)
-    plt.show()
+	fig = plt.figure(figsize=(12, 3))
 
+	display = plotting.plot_stat_map(
+			plot_img, 
+			threshold=threshold,
+			figure=fig,
+			 **kwargs)
+	plt.show()
+
+      
 def plot_centers(centers, subjectID=EXAMPLE_SUBJ_1):
     from nilearn import plotting
     import nibabel as nib

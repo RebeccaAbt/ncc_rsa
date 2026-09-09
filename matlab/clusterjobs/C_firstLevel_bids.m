@@ -1,0 +1,290 @@
+
+function C_firstLevel_bids(subjectID, configFile_firstLevel, configFile_contrasts)
+    % set(0, 'DefaultFigureVisible', 'off');
+
+    disp(rendererinfo)
+    addpath('/home/scc_e_393956/ncc/rsa/matlab/helpers')
+    addpath /mnt/ceph/groups_hdd/SCCGroup/salzburg_brain_dynamics/reabt/matlab_toolboxes/spm/
+
+    config = jsondecode(fileread(configFile_firstLevel));
+
+    bids_root_prepro = config.bids_root_preproc;
+    bids_root_raw    = config.bids_root_raw;
+    events_dir       = config.events_dir;
+    output_root      = config.output_root;
+    session          = config.session;
+
+    % What should be done?
+    %----------------------------------------------
+    execute_spm = config.execute_spm; 	% execute(or only save) jobs? 1=yes 0 = no
+    make_stat   = config.make_stat;     % Specify 1st level SPM.mat
+    make_est    = config.make_est;      % Estimate SPM.mat - Choose 1 for Classical, 2 for Bayes Estimation (see below)
+    make_con    = config.make_con;      % Write Contrasts to SPM.mat
+
+    output_dir = [output_root subjectID];
+
+    if ~exist(output_dir,'dir')
+        mkdir(output_dir);
+    end
+
+    cd(output_dir)
+
+    diary(fullfile(output_dir,'matlab.log'));
+    diary on
+
+    disp(config)
+    %-------------------------------------------
+    % start spm
+    %-------------------------------------------
+    spm('defaults', 'fmri');
+    spm_jobman('initcfg');
+    spm_get_defaults('cmdline', true);
+    setenv('SPM_HTML_BROWSER', '0');
+        %-------------------------------------------
+    % Get BIDS functional files & confound files
+    %-------------------------------------------
+    func_dir = fullfile(bids_root_prepro, subjectID, sprintf('ses-%s', session), 'func');
+
+    if ~exist(func_dir, 'dir')
+        error('Functional directory not found: %s', func_dir);
+    end
+
+    % Find all preprocessed bold files (space-T1w or space-MNI152NLin6Asym)
+    bold_files = dir(fullfile(func_dir, sprintf('%s_ses-%s_task-*_*_space-MNI152NLin6Asym_res-2_desc-preproc_bold.nii.gz', subjectID, session)));
+    bold_files = {bold_files.name}';
+
+    if isempty(bold_files)
+        error('No preprocessed bold files found in %s', func_dir);
+    end
+
+    % Sort by task number (ncc1, ncc2, etc.)
+    [~, sort_idx] = sort_bids_tasks(bold_files);
+    bold_files = bold_files(sort_idx);
+
+    % Get full paths and unzip if needed
+    files = cell(length(bold_files), 1);
+    confoundfiles = cell(length(bold_files), 1);
+
+    for i = 1:length(bold_files)
+        bold_file = bold_files{i};
+
+        % Handle .nii.gz files - check if uncompressed version exists
+        bold_path = fullfile(func_dir, bold_file);
+        if endsWith(bold_file, '.nii.gz')
+            bold_path_unzipped = bold_path(1:end-3);
+            if ~exist(bold_path_unzipped, 'file')
+                gunzip(bold_path, func_dir);
+            end
+            files{i} = bold_path_unzipped;
+        else
+            files{i} = bold_path;
+        end
+
+        % Find corresponding confounds file
+        confounds_file = strrep(bold_file, 'space-MNI152NLin6Asym_res-2_desc-preproc_bold.nii.gz', 'desc-confounds_timeseries.tsv');
+        confoundfiles{i} = fullfile(func_dir, confounds_file);
+        if ~exist(confoundfiles{i}, 'file')
+            error('Confounds file not found: %s', confoundfiles{i});
+        end
+    end
+
+
+    timeStamps = events2timestamps_38regressors(subjectID, bids_root_raw);
+    timeStamps = rmfield(timeStamps, 'runNr');
+
+    all_conditions = fieldnames(timeStamps)';
+
+    for iRun = 1:6  % make conditions definitions separately for each run so we can account  for missing conditions in runs
+
+        valid_conditions_idx = ~structfun(@isempty, timeStamps(iRun));
+        valid_conditions = all_conditions(valid_conditions_idx);
+        cnam{iRun} = valid_conditions;
+        ncon{iRun} = length(cnam{iRun});
+
+    end
+
+    %----------------
+    % Specify Design
+    %---------------
+    nruns = length(files);              %Number of runs
+    V = spm_vol(files{1});
+    nscans = numel(V);					%Number of images per file, readout from first input file
+
+    %--------------------------
+    % start actual analyse
+    %--------------------------
+
+    disp(['Preparing subject ' subjectID]);
+
+    %---------------
+    if make_stat == 1
+        %---------------
+        clear matlabbatch		%to make sure no old variables interfer
+
+        for run = 1:nruns % Get Functional Files
+
+            nii_file = files{run};
+            V = spm_vol(nii_file);
+            scans = cell(length(V),1);
+
+            for v = 1:length(V)
+                scans{v} = sprintf('%s,%d', nii_file, v);
+            end
+
+            matlabbatch{1}.spm.stats.fmri_spec.sess(run).scans = scans;
+
+        end
+
+        % Settings: Timing
+        %--------------------------
+        matlabbatch{1}.spm.stats.fmri_spec.timing.units   = config.units;   % OPTIONS: 'scans'|'secs' for onsets
+        matlabbatch{1}.spm.stats.fmri_spec.timing.RT      = config.RT;      % TR, usually: 2.25;
+        matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t  = config.fmri_t;	% Size of time bins for onset specification
+        matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t0 = config.fmri_t0; % Microtime onset
+
+        % Settings: Basis Functions
+        %--------------------------
+        matlabbatch{1}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+
+        matlabbatch{1}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];    % Options:
+        % [0 0] No Derivatives
+        % [1 0] Time Derivatives
+        % [1 1] Time and Dispersion Derivatives
+
+        matlabbatch{1}.spm.stats.fmri_spec.volt = 1;                    % Options: 1 = no; 2 = yes
+
+        % Set Output Directory
+        %---------------------
+        matlabbatch{1}.spm.stats.fmri_spec.dir = {output_dir};
+
+        % Set onset vectors from BIDS events files
+        %------------------------------------------
+
+        for run = 1: nruns
+            conditions =cnam{run}';
+            for c = 1:ncon{run}
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).cond(c).name = conditions{c};
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).cond(c).tmod = 0;
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).cond(c).pmod = struct('name', {}, 'param', {}, 'poly', {});
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).cond(c).onset = timeStamps(run).(conditions{c})(:,1);
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).cond(c).duration = timeStamps(run).(conditions{c})(:,2);
+            end
+        end
+
+
+        % Realignment Parameters from BIDS confounds
+        %-----------------------
+
+        nreg = {'R1' 'R2' 'R3' 'R4' 'R5' 'R6'};
+
+        for run = 1:nruns
+
+            confounds_data = readtable(confoundfiles{run}, 'FileType', 'text', 'Delimiter', '\t');  % Load confounds TSV file
+
+            motion_cols = {'trans_x', 'trans_y', 'trans_z', 'rot_x', 'rot_y', 'rot_z'};             % Extract motion parameters (standard fMRIPrep column names)
+
+            available_cols = intersect(motion_cols, confounds_data.Properties.VariableNames);       % Check which columns exist
+            if length(available_cols) < 6
+                warning('Expected 6 motion parameters, found %d in run %d', length(available_cols), run);
+            end
+
+            vreg = [];                                                                              % Build motion regressor matrix
+            for mp = 1:length(available_cols)
+                vreg(:, mp) = table2array(confounds_data(:, available_cols{mp}));
+            end
+
+
+            for mp = 1:size(vreg, 2)                                                                % Assign to SPM batch
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).regress(mp).name = nreg{mp};
+                matlabbatch{1}.spm.stats.fmri_spec.sess(run).regress(mp).val = vreg(1:nscans, mp);
+            end
+
+            clear confounds_data vreg;
+        end
+
+        % Other settings (Global Normalization, Explicit Masking, intrinsic autocorrelation)
+        %-----------------------------------------------------------------------------------
+        matlabbatch{1}.spm.stats.fmri_spec.global = config.global_normalisation;   % Global Normalisation: Choose 'None' or 'Scaling'
+        matlabbatch{1}.spm.stats.fmri_spec.cvi = config.cvi;     % Serial correlations: Choose 'FAST', 'AR(1)' or 'none' # ! ! ! ! in maartins code, it as "'FAST';"
+
+        % Build SPM.mat
+        %--------------
+        save(fullfile(output_dir, sprintf('%s_nruns-%d_firstlevel_batch.mat', subjectID, nruns)), 'matlabbatch');
+        if execute_spm, spm_jobman('run',matlabbatch); end;
+        disp(sprintf('Done.'));
+
+        clear matlabbatch;
+
+        %-----------------
+    end % of make_stat
+    %-----------------
+
+    % Estimation
+    %---------------
+    if make_est == 1
+        %---------------
+
+        matlabbatch{1}.spm.stats.fmri_est.spmmat = {fullfile(output_dir,'SPM.mat')};
+        matlabbatch{1}.spm.stats.fmri_est.method.Classical = 1;
+        matlabbatch{1}.spm.stats.fmri_est.write_residuals = 0;
+
+        save(fullfile(output_dir, sprintf('%s_nruns-%d_estimation_batch.mat', subjectID, nruns)), 'matlabbatch');
+        if execute_spm
+            spm_jobman('run',matlabbatch)
+        end
+        disp(sprintf('Done.'));
+        clear matlabbatch;
+
+        %-----------------
+    end % of make_est
+    %-----------------
+
+    % Contrasts
+    %---------------
+    if make_con == 1
+        disp('Generating contrasts...');
+
+        % Load contrast and condition definitions
+        contrasts_config = jsondecode(fileread(configFile_contrasts));
+        contrasts = contrasts_config.contrasts;
+
+        regressorNames_repeated = contrasts_config.regressorNames_repeated;
+        regressorNames = contrasts_config.regressorNames_unrepeated;
+        num_repetitions = contrasts_config.num_repetitions;
+        padding = length(regressorNames)+contrasts_config.num_realignmentRegressors;
+
+        matlabbatch{1}.spm.stats.con.spmmat = {fullfile(output_dir,'SPM.mat')};
+        matlabbatch{1}.spm.stats.con.delete = [1];
+
+        for c = 1:length(contrasts)
+
+            matlabbatch{1}.spm.stats.con.consess{c}.tcon.sessrep = 'repl';
+            matlabbatch{1}.spm.stats.con.consess{c}.tcon.name = contrasts(c).name;
+            matlabbatch{1}.spm.stats.con.consess{c}.tcon.convec = make_contrast(contrasts(c).weights, regressorNames_repeated, num_repetitions, padding);
+            matlabbatch{1}.spm.stats.con.consess{c}.tcon.sessrep = 'repl';
+
+        end
+
+        nRegressors = ncon{1};%38;
+        for k=1:nRegressors
+            zeros_before = k-1;
+            zeros_after = nRegressors-k;
+            outContrast{1}(k,:) = [zeros(1,zeros_before) 1 zeros(1,zeros_after) zeros(1,padding)]; % padding is for the (probably 6) realignment regressors
+        end
+
+        matlabbatch{1}.spm.stats.con.consess{c+1}.fcon.name='eoi';
+        matlabbatch{1}.spm.stats.con.consess{c+1}.fcon.convec=outContrast; % computed above --> much easier to adapt to different numbers of regressors...
+        matlabbatch{1}.spm.stats.con.consess{c+1}.fcon.sessrep='repl';
+
+        if execute_spm, spm_jobman('run',matlabbatch); end
+        clear matlabbatch;
+        disp('Done.');
+
+        %----------------
+    end % of make_con
+    %----------------
+
+    diary off
+
+end 
+

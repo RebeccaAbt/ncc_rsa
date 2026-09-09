@@ -120,8 +120,8 @@ class Fusion_CP(Job):
             print(f'\t\t\t number of valid voxels in mask: {np.sum(mask_1d)}')
             print(f"\t\t\t number of subjects (length of 'all_data_pre'): {len(all_data_pre)}\n")
 
-            X_pre   = get_masked_data(all_data_pre, mask_1d)
-            X_post  = get_masked_data(all_data_post, mask_1d)
+            X_pre   = data3d_to_masked1d(all_data_pre, mask_1d)
+            X_post  = data3d_to_masked1d(all_data_post, mask_1d)
             X_diff  = X_post - X_pre
 
             plot_fusion_all_subjects(X_pre, X_post, modality)

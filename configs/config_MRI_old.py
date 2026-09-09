@@ -11,7 +11,6 @@ import sys
 from nibabel import load as nibload
 import numpy as np
 from utils.plots import plot_rdm
-from utils.model import get_spec_modelRDM
 
 '''
 Config used for the MRI data for modelbased fMRI/MEG fusion for the NCC study. 
@@ -26,13 +25,12 @@ class MRIconfig_Base:
 	def __init__(self, subjectID='not_defined', maskNr=0, modelType = 'both'):
 		self.subjectID = subjectID
 		self.maskNr = maskNr
+		self.modelType = modelType
 
 		self.prefix = ''
 		self.nCond = 24
 		self.firstLevelModel = 'SM1C'
 		self.firstLevelDir = MRI_1ST_LEVEL_FOLDER # before, this was 'firstLevel_sensory_M1B', but the data was computed with the wrong Outro Timestamp duration
-		self.modelsAll = ALL_MODELS
-		self.models = ALL_MODELS
 		self.modelType = f'all{len(ALL_MODELS)}' # indicate total number of models
 		self.RDMmethod = None
 		self.RSAmethod = None
@@ -62,8 +60,8 @@ class MRIconfig_Base:
 		self.prefix_full = f'{self.prefix}_full'
 		self.thr_string = str(self.SLthr).replace('.', '_')
 
-		# self.models_6_file = os.path.join(self.modelsDir, 'models_6.joblib')
-		# self.models_24_file = os.path.join(self.modelsDir, 'models_24.joblib')
+		self.models_6_file = os.path.join(self.modelsDir, 'models_6.joblib')
+		self.models_24_file = os.path.join(self.modelsDir, 'models_24.joblib')
 
 		self.filePrefix = f'{self.prefix}_{self.firstLevelModel}_{self.nCond}Cond_{self.RDMmethod}_{self.RSAmethod}_r{self.SLradius}_thr{self.thr_string}_{self.modelType}'
 		self.filePrefix_noModel = f'{self.prefix}_{self.firstLevelModel}_{self.nCond}Cond_{self.RDMmethod}_{self.RSAmethod}_r{self.SLradius}_thr{self.thr_string}'
@@ -78,13 +76,14 @@ class MRIconfig_Base:
 		self.outDir = os.path.join(self.dataDir, f'{self.rsaFolder}/{self.__class__.__name__}/{self.subjectID}/')
 		self.outDir_inference = os.path.join(self.dataDir, f'{self.rsaFolder}/{self.__class__.__name__}/') # for group-level data
 	  
-		if isinstance(self.models, list):
+		# support modelType as string (e.g. 'all3'), a single model name, or a list of model names
+		if isinstance(self.modelType, list):
 			# list of model names -> store list of indices
-			self.modelIdx = [self.modelsAll.index(mt) for mt in self.models]
-		elif isinstance(self.models, str) and 'all' in self.models:
+			self.modelIdx = [ALL_MODELS.index(mt) for mt in self.modelType]
+		elif isinstance(self.modelType, str) and 'all' in self.modelType:
 			self.modelIdx = None
 		else:
-			self.modelIdx = self.modelsAll.index(self.models) # --------------------------- This is the new indexing method, in case I want to add more models 
+			self.modelIdx = ALL_MODELS.index(self.modelType) # --------------------------- This is the new indexing method, in case I want to add more models 
 
 		# Moved from get_paths to here
 		self.workspace_outFile = os.path.join(self.outDir, f'{self.filePrefix_partialMasks_noModel}_workspace.pkl')
@@ -96,16 +95,45 @@ class MRIconfig_Base:
 			self.DistPlotFile = os.path.join(self.outDir, f'{self.filePrefix_partialMasks}_distPlot.png')
 			self.ResultsPlotFile = os.path.join(self.outDir, f'{self.filePrefix_partialMasks}_resultsPlot.png')
 
+
 		self.plot1_title = f'Distribution | model: {self.firstLevelModel} | RDM: {self.RDMmethod} | RSA: {self.RSAmethod} - {self.subjectID}'
 		self.plot2_title = f'Results | model: {self.firstLevelModel} | RDM: {self.RDMmethod} | RSA: {self.RSAmethod} - {self.subjectID}'
 
 	def get_model_RDM(self):
-		models = get_spec_modelRDM(self.models)
-		models = models if isinstance(models, list) else [models]
-		return models
+		models = joblib.load(self.models_6_file if self.nCond == 6 else self.models_24_file)
+		if self.modelType == 'sensory':
+			if self.nCond == 6:
+				raise ValueError("Sensory model not valid with 6 conditions.")
+		if 'all' in self.modelType:
+			print('returning all models', flush=True)
+			return models
+		else:
+			if not isinstance(self.modelType, list):
+				self.modelType = [self.modelType]
+			print(f'returning the models for modeltype {models}', flush=True)
+			return [models[ALL_MODELS.index(model)] for model in self.modelType]
+		# single model name
+		# 	return models[0]
+		# elif self.modelType == 'suprasensory':
+		# 	return models[1]
+		# elif self.modelType == 'both':
+		# 	return models
+		# else:
+		# 	raise ValueError(f"Unknown model type: {self.modelType}")
+
 		
 	def plot_model_RDM(self):
-		plot_rdm(self.get_model_RDM(), dict(show_colorbar = 'panel', pattern_descriptor = 'condition'))
+		models = joblib.load(self.models_6_file if self.nCond == 6 else self.models_24_file)
+		if self.modelType == 'sensory':
+			if self.nCond == 6:
+				raise ValueError("Sensory model not valid with 6 conditions.")
+			model = models[0]
+		elif self.modelType == 'suprasensory':
+			model = models[1]
+		else:
+			raise ValueError(f"Unknown model type: {self.modelType}")
+		
+		plot_rdm(model)
 		
 
 	def get_outFile_names(self):

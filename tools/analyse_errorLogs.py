@@ -9,7 +9,7 @@ import subprocess
 from collections import defaultdict
 #%%
 jobsDir = os.path.join(JOBS_DIR, 'rsa_mri')
-jobID = '1861534'
+jobID = '2126677'
 
 
 def find_job_folder(jobID, jobsDir):
@@ -161,10 +161,10 @@ if subjob_ids:
                 print('job_cluster.add_job(\n\t'\
             'SL_crossnobis_partial,\n\t'\
             'subjectID=subjectID,\n\t'\
-            'maskNr=PermuteArgument(partialMasks),\n\t'\
+            'maskNr=auto_args(partialMasks),\n\t'\
             'config_class_name = thisConfig\n'\
         ')\n')
-            else: # don't use "PermuteArguments" of there is only one single partial pask missing
+            else: # don't use "auto_argss" of there is only one single partial pask missing
                 masks_sorted = sorted(set(masks))
                 print(f"thisConfig = '{config}'")
                 print(f"subjectID = '{subject}'")
@@ -175,5 +175,98 @@ if subjob_ids:
             'maskNr=partialMask,\n\t'\
             'config_class_name = thisConfig\n'\
         ')\n')
+
+#%% rerun Jobs with other errors
+
+# [2] Jobs with errors  ---------------------------------------------
+
+with open(outFile_failed) as f:
+    lines = f.readlines()
+
+# Extract subjob numbers
+subjob_ids = sorted(set(
+    int(match.group(1))
+    for line in lines
+    if (match := re.search(rf"{jobID}_(\d+)\b", line))
+))
+
+print(f'\nJobs that failed due to Error(s):\n {subjob_ids}\n')
+
+if subjob_ids: 
+
+    job_errors = []
+
+    for job_id in subjob_ids:
+        log_file = os.path.join(jobPath, f"out_{job_id}.log")
+        if not os.path.isfile(log_file):
+            print(f"[Missing] {log_file}")
+            continue
+
+        with open(log_file) as f:
+            lines = f.readlines()
+
+        # Default values
+        subject = maskNr = config = "N/A"
+        # last_line = lines[-1].strip() if lines else "<empty file>"
+
+        for line in lines:
+            if "subject:" in line:
+                subject = line.split("subject:")[1].strip()
+            elif "maskNr:" in line:
+                maskNr = line.split("maskNr:")[1].strip()
+            elif "configuration:" in line:
+                config = line.split("configuration:")[1].strip()
+
+        job_errors.append({
+            "job_id": job_id,
+            "subject": subject,
+            "maskNr": maskNr,
+            "config": config,
+        })
+
+    # Sort first by config, then by subject
+    job_errors_sorted = sorted(job_errors, key=lambda x: (x["config"], x["subject"]))
+
+
+    # Group: config -> subject -> list of mask numbers
+    grouped_errors = defaultdict(lambda: defaultdict(list))
+
+    for entry in job_errors_sorted:
+        config = entry["config"]
+        subject = entry["subject"]
+        try:
+            maskNr = int(entry["maskNr"])
+        except ValueError:
+            continue  # skip if mask number is invalid
+
+        grouped_errors[config][subject].append(maskNr)
+
+
+    for config, subjects in grouped_errors.items():
+        for subject, masks in sorted(subjects.items()):
+            if len(masks)>1:
+                
+                masks_sorted = sorted(set(masks))
+                print(f"thisConfig = '{config}'")
+                print(f"subjectID = '{subject}'")
+                print(f"partialMasks = {masks_sorted}\n")
+                print('job_cluster.add_job(\n\t'\
+            'SL_crossnobis_partial,\n\t'\
+            'subjectID=subjectID,\n\t'\
+            'maskNr=auto_args(partialMasks),\n\t'\
+            'config_class_name = thisConfig\n'\
+        ')\n')
+            else: # don't use "auto_argss" of there is only one single partial pask missing
+                masks_sorted = sorted(set(masks))
+                print(f"thisConfig = '{config}'")
+                print(f"subjectID = '{subject}'")
+                print(f"partialMask = {masks_sorted[0]}\n")
+                print('job_cluster.add_job(\n\t'\
+            'SL_crossnobis_partial,\n\t'\
+            'subjectID=subjectID,\n\t'\
+            'maskNr=partialMask,\n\t'\
+            'config_class_name = thisConfig\n'\
+        ')\n')
+
 
 

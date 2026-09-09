@@ -20,7 +20,7 @@ from utils.submit_jobs import auto_args, job_setup
 
 partialMasks = list(map(int, np.concatenate([np.arange(1, 61)])))  # This will include all masks from 1 to 60])))
 
-for thisConfig in ['MRIconfig_C5full_nan']:#, ['MRIconfig_C5full', 'MRIconfig_C5_nan', 'MRIconfig_C5full_nan']:
+for thisConfig in ['MRIconfig_C2full_nan']: # ['MRIconfig_C5full', 'MRIconfig_C5_nan', 'MRIconfig_C5full_nan']:
     all_subjects = get_MRI_subjects(thisConfig)
     # all_subjects = '19880331igse'
 
@@ -32,10 +32,18 @@ for thisConfig in ['MRIconfig_C5full_nan']:#, ['MRIconfig_C5full', 'MRIconfig_C5
 
     Because of that, memory usage info for parallel jobs (e.g. avg. 0.87 CPUs/ 1.41GB of RAM) doesn't really make sense in comparison 
         --> should probably better be ignored
+
+
+    htop test 08.09.2026:
+        - config: MRIconfig_C2full_nan
+        - ram: 64G
+        - cpus: 8
+        - time: 2h
+            -> htop shows up to 130% capacity utilization
     '''
     job_kwargs = job_setup(ram='64G',
                            cpus=8,
-                           time=3*60, # 1h is enough for SL_rasius=2, but for SL-_radius=5, we need more time! --> 2.5 - 3 h
+                           time=2*60, # 1h is enough for SL_rasius=2, but for SL-_radius=5, we need more time! --> 2.5 - 3 h
                         #    qos='high_prio',
                            name = f'MRI_{thisConfig.partition('_')[2]}.sh',
     					   jobs_dir = f'rsa_mri'
@@ -52,4 +60,3 @@ for thisConfig in ['MRIconfig_C5full_nan']:#, ['MRIconfig_C5full', 'MRIconfig_C5
 
     job_cluster.submit(do_submit=True)
 
-#%%

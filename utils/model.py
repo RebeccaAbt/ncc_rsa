@@ -34,23 +34,6 @@ def _get_concept_df():
 	concept_df = pd.DataFrame(data)
 	return concept_df
 
-def _random_model(data, k=1, RDM_descriptor=_get_rdm_descriptor()):
-	# data must be a lower-triangle vector, e.g. from a rsa model :model.rdm_obj.get_vectors()
-	# k: number attached to model name
-	n_conditions = int((1 + np.sqrt(1 + 8 * data.size)) / 2)
-	if n_conditions * (n_conditions - 1) // 2 != data.size:
-		raise ValueError('modeldata must contain exactly the lower triangle data.')
-
-	rng = np.random.default_rng()
-	rng.shuffle(data)
-	lower_idx = np.tril_indices(n_conditions, k=-1)
-	randomMat = np.zeros((n_conditions, n_conditions), dtype=data.dtype)
-	randomMat[lower_idx] = data
-	randomMat += randomMat.T
-	np.fill_diagonal(randomMat, 0)
-	randomModel = rsa.model.ModelFixed(f'random_model_{k}', randomMat)
-	randomModel.rdm_obj.pattern_descriptors['condition'] = RDM_descriptor
-	return randomModel
 
 def get_spec_modelRDM(model_name = ALL_MODELS):
 	if isinstance(model_name,list):
@@ -93,25 +76,122 @@ def get_spec_modelRDM(model_name = ALL_MODELS):
 
 		return model
 
+# def _random_model(data, k=1, RDM_descriptor=_get_rdm_descriptor()):
+# 	# data must be a lower-triangle vector, e.g. from a rsa model :model.rdm_obj.get_vectors()
+# 	# k: number attached to model name
+# 	n_conditions = int((1 + np.sqrt(1 + 8 * data.size)) / 2)
+# 	if n_conditions * (n_conditions - 1) // 2 != data.size:
+# 		raise ValueError('modeldata must contain exactly the lower triangle data.')
 
-def get_random_model_like(n=1, like_model='sensory'):
-	# 'like_model' can be
-	#		- a string of a model type
-	# 		- an RSA model object
+# 	rng = np.random.default_rng()
+# 	rng.shuffle(data)
+# 	lower_idx = np.tril_indices(n_conditions, k=-1)
+# 	randomMat = np.zeros((n_conditions, n_conditions), dtype=data.dtype)
+# 	randomMat[lower_idx] = data
+# 	randomMat += randomMat.T
+# 	np.fill_diagonal(randomMat, 0)
+# 	randomModel = rsa.model.ModelFixed(f'random_model_{k}', randomMat)
+# 	randomModel.rdm_obj.pattern_descriptors['condition'] = RDM_descriptor
+# 	return randomModel
+
+
+def _random_model_fullyRandom(data, k=1, RDM_descriptor=_get_rdm_descriptor()): # 
+
+	n_conditions = int((1 + np.sqrt(1 + 8 * data.size)) / 2)
+
+	if n_conditions * (n_conditions - 1) // 2 != data.size:
+		raise ValueError(
+			'modeldata must contain exactly the lower triangle data.'
+		)
+
+	rng = np.random.default_rng()
+
+	data = np.asarray(data).ravel().copy()
+	rng.shuffle(data)
+
+	lower_idx = np.tril_indices(n_conditions, k=-1)
+
+	randomMat = np.zeros((n_conditions, n_conditions), dtype=data.dtype)
+
+	randomMat[lower_idx] = data
+	randomMat += randomMat.T
+	np.fill_diagonal(randomMat, 0)
+
+	randomModel = rsa.model.ModelFixed(f'random_model_{k}', randomMat)
+
+	randomModel.rdm_obj.pattern_descriptors['condition'] = RDM_descriptor
+
+	return randomModel
+
+def _random_model_labelPermutation(model, k=1, RDM_descriptor=None, permutation = None, output='rdm'):
+
+	if isinstance(model, str):
+		model = get_spec_modelRDM(model)
+
+	if isinstance(model, rsa.model.ModelFixed):
+		rdm = np.asarray(model.rdm_obj.get_matrices()[0])
+	else:
+		rdm = np.asarray(model)
+
+	if rdm.ndim != 2 or rdm.shape[0] != rdm.shape[1]:
+		raise ValueError("Model RDM must be square.")
+
+	if not permutation:
+		n_conditions = rdm.shape[0]
+
+		rng = np.random.default_rng()
+		permutation = rng.permutation(n_conditions)
+	
+	random_rdm = rdm[np.ix_(permutation, permutation)] # Permute the condition assignment of the RDM
+
+	if output == 'matrix': 
+		return random_rdm
+	
+	else:
+		random_model = rsa.model.ModelFixed(f'random_model_{k}', random_rdm)
+		if RDM_descriptor is None:
+			RDM_descriptor = _get_rdm_descriptor()
+
+		random_model.rdm_obj.pattern_descriptors['condition'] = RDM_descriptor
+
+		return random_model
+
+
+def get_random_model_like(n=1, like_model='sensory', method='label', permutation = None):
+	'''
+	'like_model' can be
+			- a string of a model type
+			- an RSA model object
+	'method' can be 
+			- 'label' --> basically shuffels the labels, keeps the relationships 
+			   example:
+						 	  A   B   C   D			A -> C			
+						A     0  ab  ac  ad			B -> A			
+						B    ab   0  bc  bd			C -> D
+						C    ac  bc   0  cd			D -> B
+						D    ad  bd  cd   0
+
+			- 'random'
+			   example:
+							ab -> cd
+							ac -> ab
+							ad -> bc
+				...
+'''
+	if method not in ['label', 'random']:
+		raise ValueError(f"Invalid method: {method}. Must be 'label' or 'random'")
+
 	if isinstance(like_model, str): # get model if input was a string
 		like_model = get_spec_modelRDM(like_model)
 
-	if isinstance(like_model, rsa.model.model.ModelFixed): # if input is (now) a model, get lower tri data
-		like_model = like_model.rdm_obj.get_vectors()
+	# if isinstance(like_model, rsa.model.model.ModelFixed): # if input is (now) a model, get lower tri data
+	model_data = like_model.rdm_obj.get_vectors()
 
-	data = np.asarray(like_model).ravel()
+	data = np.asarray(model_data).ravel().copy()
 
-	return [_random_model(data,k) for k in range(0,n)]
+	if method == 'label':
+		return [_random_model_labelPermutation(like_model,k, permutation=permutation) for k in range(0,n)]
 
+	elif method == 'random':
+		return [_random_model_fullyRandom(data,k) for k in range(0,n)]
 
-
-
-#%%
-
-
-# randomModels = get_random_model_like(4)

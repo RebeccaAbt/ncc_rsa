@@ -146,8 +146,7 @@ class SL_crossnobis_partial(Job):
 
         print(f' --- mask file: {cfg.get_mask_file()} --- ', flush=True)
         mask = nib.load(cfg.get_mask_file())
-        mask_data = mask.get_fdata()
-        mask_bool = mask_data > 0
+        mask_bool = mask.get_fdata() > 0
  
     # 4) finding Searchlights
         print(f'    - Getting searchlight centers and neighbors of mask nr. {cfg.maskNr} with radius {cfg.SLradius} voxels and threshold {cfg.SLthr}', flush=True)
@@ -171,10 +170,9 @@ class SL_crossnobis_partial(Job):
 
     # ~~~~~~~~~~~~~~~~~~ this is new: trying to allow searchlights that are smaller at the edge of the brain
         if cfg.SLthr < 1:
-            mask_bool_1D_idx = np.where(mask_bool.flatten())[0] 
-            for i, n in enumerate(neighbors):
-                n = n[np.isin(n, mask_bool_1D_idx)]
-                neighbors[i] = n
+            
+            neighbors = adust_edge_searchlights(mask, neighbors)
+
             edge_searchlights_adjusted = True
         else: edge_searchlights_adjusted = False
     # ~~~~~~~~~~~~~~~~~~

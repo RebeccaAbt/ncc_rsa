@@ -33,13 +33,15 @@ class SL_crossnobis_compileResults(Job):
 	def run(self,
 			subjectID = '19910823ssld',
 			config_class_name = 'MRIconfig_C'):
-	
+			
 		print(
 			" ----------------------------------------------------------------------------\n",
 			"Looping over all partial masks and find searchlights, so we know which masks \n are supposed to be empty and which aren't\n",
 			"----------------------------------------------------------------------------"
 		)
-		find_empty_masks(subjectID, config_class_name) # saves the empty mask indeices to a file
+		# save the empty mask indices to a file and returns the searchlight centers and neighbors for all non-empty masks 
+		# (corrected for smaller edge searchlights!!)
+		all_centers, all_neighbors = find_empty_masks(subjectID, config_class_name) 
 
 		print('[1] Loading configuration...')
 		cfg = load_MRI_config_instance(config_class_name, subjectID)
@@ -125,11 +127,11 @@ class SL_crossnobis_compileResults(Job):
 				f"'empty_masks.txt' contains invalid mask numbers: {sorted(unexpected_empty)}"
 			)
 
-		all_SL_rdms = compile_SL_rdms_files(SL_rdms_files_sorted)
+		all_SL_rdms = compile_SL_rdms_files(SL_rdms_files_sorted, all_centers, all_neighbors)
 
 		# output from SL analysis before comparison with model RDMs (--> save outside of model loop)
 		joblib.dump(all_SL_rdms, outFiles['SL_rdms'])
-		save_RSA_outputs(cfg)
+		save_RSA_outputs(cfg) # this is important because the model evaluation is performed here
 
 		logger.info('Compiled fMRI crossnobis searchlights')
 		logger.info('Configuration class: %s', config_class_name)

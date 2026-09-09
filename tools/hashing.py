@@ -38,6 +38,7 @@ def replace_hashed_in_path(root_dir: str, hashed_id: str, subj: str) -> None:
             if hashed_id in name:
                 old_path = os.path.join(dirpath, name)
                 new_path = os.path.join(dirpath, name.replace(hashed_id, subj))
+                print(f"old path: {old_path}\n\t new path: {new_path}")
                 os.rename(old_path, new_path)
         if len(dirnames)>0:
             for name in dirnames:
@@ -48,16 +49,19 @@ def replace_hashed_in_path(root_dir: str, hashed_id: str, subj: str) -> None:
         else:
             print(f'{subj} ({hashed_id}) not in BIDS data')
 #%%%
+subjects = ['sub-19991211mrbn']
 for subj in subjects:
     hashed_ID = hash_string(subj, 'aw_ncc')
-    replace_hashed_in_path(inDir, hashed_ID, subj)
+    replace_hashed_in_path('/home/scc_e_393956/ncc/rsa/outputs_MRI/bids/fmriprep', hashed_ID, subj)
 
 #%%
 # 19930306sbeh, 19970801cabd
-for subj in subjects:
+for subj in ['19991211mrbn']:
     hashed_ID = hash_string(subj, 'aw_ncc')
     print(f"{subj} --> {hashed_ID}")
 
 
+#%%
 
-
+hashed_ID = hash_string('19930306sbpe', 'aw_ncc')
+print(f"{'19930306sbpe'} --> {hashed_ID}")

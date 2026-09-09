@@ -1,0 +1,21 @@
+{
+    "bids_root_preproc": "/home/scc_e_393956/ncc/rsa/outputs_MRI/bids/fmriprep/",
+    "bids_root_raw": "/home/scc_e_393956/ncc/rsa/outputs_MRI/bids/raw_bids/",
+    "events_dir": "/home/scc_e_393956/ncc/rsa/outputs_MRI/bids/events/",
+    "output_root": "/home/scc_e_393956/ncc/rsa/outputs_MRI/bids/firstLevel1/",
+
+    "session": "1",
+    "max_nRuns": 6,
+
+    "execute_spm": false,
+    "make_stat": false,
+    "make_est": false,
+    "make_con": true,
+
+	"units": "secs",
+	"RT": 1.05,
+	"fmri_t": 16,
+	"fmri_t0": 8,
+	"cvi": "FAST",
+	"global_normalisation": "None"
+}

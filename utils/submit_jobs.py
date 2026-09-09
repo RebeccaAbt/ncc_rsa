@@ -33,8 +33,8 @@ def job_setup(  ram='4G',
                 # qos='high_prio',
                 qos = None,
                 python_bin = PYTHON_BIN,
-                # exclude_nodes='node09.scc-pilot.plus.ac.at,node10.scc-pilot.plus.ac.at',
-                exclude_nodes=None,
+                exclude_nodes='gpunode02.dyn.scc.plus.ac.at',
+                # exclude_nodes=None,
                 name='submit.sh',
                 jobs_dir = 'jobs'):
     

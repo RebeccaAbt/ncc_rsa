@@ -67,6 +67,8 @@ def get_cluster_def_thres(data_pre, method, tail, pval = 0.001, t_percent = 99.5
     '''
 
     X_thres = np.transpose(np.array(data_pre)) # get nSubjects*observations shape
+    assert X_thres.shape[0] < X_thres.shape[1], f'shape of input data is {X_thres.shape}. The first dimensions should be smaller than the second dimension since the data should be  "subj x observations"'
+
     if method == 't':
         print(f'\t\t - Computing cluster definition threshold on pre-stimulus data + get adjacency', flush=True)
         print(f'\t\t\t - Shape of input variable "X": {X_thres.shape} (n_subj x valid_voxels_all_timepoints)', flush=True)
@@ -122,10 +124,13 @@ def get_spatial_adjacency_3d(mask_3d):
     
     :param mask_3d: Description
     
-
-    My approach for adjacency matrix: 3D adjacency instead of 4d adjacency: Cluster-permutation dopcumentation says that we can also compute a adjacency 
-    matrix from only spatial 3d data instead of spatiotemporal 4d data. We can then set the "max_step" argument 
+    My approach for adjacency matrix: 
+    For the fMRI-MEG fusion analysis, we need som kind of 4D spatio-temporal adjacency. 
+    But we can actually use 3D adjacency instead of 4d adjacency: 
+    Cluster-permutation dopcumentation says that we can also compute a adjacency matrix from only spatial 
+    3d data instead of spatiotemporal 4d data. We can then set the "max_step" argument 
     to something that accounts for the temporal adjacency. 
+    We can also use this function for the normal 3d adjacency for statistics after the fMRI RSA.
 
     For the 3D adjacency matrix we can use the function:
 
@@ -148,7 +153,7 @@ def get_spatial_adjacency_3d(mask_3d):
                             n_z= s_3D[2],
                             mask=mask_3d   )
 
-def get_masked_data(data, mask_1D):
+def data3d_to_masked1d(data, mask_1D):
     '''
     Docstring for get_masked_data
     

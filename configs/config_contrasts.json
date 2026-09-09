@@ -1,0 +1,208 @@
+{
+	"regressorNames_repeated": [
+    "aud_miss",
+    "aud_hit",
+    "tac_miss",
+    "tac_hit",
+    "vis_miss",
+    "vis_hit",
+    "aud_HI",
+    "tac_HI",
+    "vis_HI"
+	],
+	
+	"num_repetitions": 4,
+
+	"regressorNames_unrepeated": [
+    "instruct",
+	"respScreen"
+	],
+	"num_realignmentRegressors": 6,
+
+
+  "contrasts": [
+    {
+      "name": "aud: hit_total (NT + HI) > miss",
+      "type": "T",
+      "weights": {
+        "aud_miss": -2,
+        "aud_hit": 1,
+        "aud_HI": 1
+      }
+    },
+    {
+      "name": "tac: hit_total (NT + HI) > miss",
+      "type": "T",
+      "weights": {
+        "tac_miss": -2,
+        "tac_hit": 1,
+        "tac_HI": 1
+      }
+    },
+    {
+      "name": "vis: hit_total (NT + HI) > miss",
+      "type": "T",
+      "weights": {
+        "vis_miss": -2,
+        "vis_hit": 1,
+        "vis_HI": 1
+      }
+    },
+
+    {
+      "name": "aud: hit_NT > miss",
+      "type": "T",
+      "weights": {
+        "aud_miss": -1,
+        "aud_hit": 1
+      }
+    },
+    {
+      "name": "tac: hit_NT > miss",
+      "type": "T",
+      "weights": {
+        "tac_miss": -1,
+        "tac_hit": 1
+      }
+    },
+    {
+      "name": "vis: hit_NT > miss",
+      "type": "T",
+      "weights": {
+        "vis_miss": -1,
+        "vis_hit": 1
+      }
+    },
+
+    {
+      "name": "aud: HI > miss",
+      "type": "T",
+      "weights": {
+        "aud_miss": -1,
+        "aud_HI": 1
+      }
+    },
+    {
+      "name": "tac: HI > miss",
+      "type": "T",
+      "weights": {
+        "tac_miss": -1,
+        "tac_HI": 1
+      }
+    },
+    {
+      "name": "vis: HI > miss",
+      "type": "T",
+      "weights": {
+        "vis_miss": -1,
+        "vis_HI": 1
+      }
+    },
+
+    {
+      "name": "aud: HI > NT_hit",
+      "type": "T",
+      "weights": {
+        "aud_hit": -1,
+        "aud_HI": 1
+      }
+    },
+    {
+      "name": "tac: HI > NT_hit",
+      "type": "T",
+      "weights": {
+        "tac_hit": -1,
+        "tac_HI": 1
+      }
+    },
+    {
+      "name": "vis: HI > NT_hit",
+      "type": "T",
+      "weights": {
+        "vis_hit": -1,
+        "vis_HI": 1
+      }
+    },
+
+    {
+      "name": "suprasensory: NT hit > NT miss",
+      "type": "T",
+      "weights": {
+        "aud_miss": -1,
+        "aud_hit": 1,
+        "tac_miss": -1,
+        "tac_hit": 1,
+        "vis_miss": -1,
+        "vis_hit": 1
+      }
+    },
+
+    {
+      "name": "suprasensory: hit + HI > miss",
+      "type": "T",
+      "weights": {
+        "aud_miss": -2,
+        "aud_hit": 1,
+        "aud_HI": 1,
+        "tac_miss": -2,
+        "tac_hit": 1,
+        "tac_HI": 1,
+        "vis_miss": -2,
+        "vis_hit": 1,
+        "vis_HI": 1
+      }
+    },
+
+    {
+      "name": "hit/HI: aud > vis + tac",
+      "type": "T",
+      "weights": {
+        "aud_hit": 2,
+        "tac_hit": -1,
+        "vis_hit": -1,
+        "aud_HI": 2,
+        "tac_HI": -1,
+        "vis_HI": -1
+      }
+    },
+
+    {
+      "name": "hit/HI: tac > vis + aud",
+      "type": "T",
+      "weights": {
+        "aud_hit": -1,
+        "tac_hit": 2,
+        "vis_hit": -1,
+        "aud_HI": -1,
+        "tac_HI": 2,
+        "vis_HI": -1
+      }
+    },
+
+    {
+      "name": "hit/HI: vis > tac + aud",
+      "type": "T",
+      "weights": {
+        "aud_hit": -1,
+        "tac_hit": -1,
+        "vis_hit": 2,
+        "aud_HI": -1,
+        "tac_HI": -1,
+        "vis_HI": 2
+      }
+    },
+
+    {
+      "name": "aud hit + HI > vis + tac",
+      "type": "T",
+      "weights": {
+        "aud_hit": -1,
+        "tac_hit": -1,
+        "vis_hit": 1,
+        "aud_HI": -1,
+        "tac_HI": -1,
+        "vis_HI": 1
+      }
+    }
+  ]
+}

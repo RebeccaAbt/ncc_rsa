@@ -44,7 +44,7 @@ def find_common_centers(masks, maskFile='/home/reabt/experiments/ncc/MRI/data/sy
 		plt.show()
 	return mask.astype(bool)
 
-def get_masked_data(data, mask_1D):
+def data3d_to_masked1d(data, mask_1D):
 	'''
 	Docstring for get_masked_data
 	

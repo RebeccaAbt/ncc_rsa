@@ -30,6 +30,7 @@ mne-qt-browser = "*"
 neurokit2 = "*"
 moviepy = ">=2.2.1,<3"
 ipympl = ">=0.10.0,<0.11"
+scikit-bio = ">=0.7.3,<0.8"
 
 
 [pypi-dependencies]
